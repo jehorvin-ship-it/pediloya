@@ -122,6 +122,10 @@
     const sendOtpError = document.getElementById('send-otp-error');
     const confirmOtpError = document.getElementById('confirm-otp-error');
     const recaptchaContainer = document.getElementById('recaptcha-container'); 
+
+    // --- ¡Variables para el temporizador de bloqueo! ---
+    let blockTimerInterval = null;
+    let blockSecondsRemaining = 60; // 60 segundos de espera inicial
     
     // --- LÓGICA PRINCIPAL AL CARGAR PÁGINA ---
     (async () => {
@@ -139,29 +143,22 @@
         loginContainer.style.display = 'block';
         accountContainer.style.display = 'none';
         
-        // --- ¡MODIFICACIÓN PARA reCAPTCHA VISIBLE! ---
         try {
-          recaptchaContainer.innerHTML = ''; // Limpiar
-          
+          recaptchaContainer.innerHTML = ''; 
           appVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-            'size': 'normal', // <-- ¡CAMBIO IMPORTANTE! Usar 'normal' para el checkbox
+            'size': 'normal', 
             'callback': (response) => {
-              // reCAPTCHA resuelto POR EL USUARIO (hizo clic en el checkbox)
               console.log("reCAPTCHA VISIBLE resuelto por el usuario.");
-              sendOtpBtn.disabled = false; // <-- Habilitar el botón de enviar SMS
-              sendOtpError.style.display = 'none'; // Ocultar errores previos
+              sendOtpBtn.disabled = false; 
+              sendOtpError.style.display = 'none'; 
             },
             'expired-callback': () => {
-              // El token expiró (si esperó mucho después de hacer clic)
               console.warn("reCAPTCHA VISIBLE expiró.");
               sendOtpError.textContent = "La verificación reCAPTCHA expiró. Por favor, marca la casilla de nuevo.";
               sendOtpError.style.display = 'block';
-              sendOtpBtn.disabled = true; // <-- Deshabilitar botón
-              // Firebase suele manejar el reset del checkbox visible automáticamente
+              sendOtpBtn.disabled = true; 
             }
           });
-
-          // Renderizar el widget visible. Firebase lo hará aparecer.
           appVerifier.render().then((widgetId) => {
             console.log("reCAPTCHA VISIBLE renderizado OK.");
           }).catch(renderError => {
@@ -169,98 +166,130 @@
              sendOtpError.textContent = `Error al mostrar reCAPTCHA: ${renderError.message}`;
              sendOtpError.style.display = 'block';
           });
-          
         } catch (e) { 
             console.error("Error crítico inicializando reCAPTCHA VISIBLE:", e); 
             sendOtpError.textContent = `Error crítico al iniciar reCAPTCHA: ${e.message}`;
             sendOtpError.style.display = 'block';
         }
-        // --- FIN DE LA MODIFICACIÓN ---
       }
     })();
 
-    // --- LÓGICA DE LOGIN ---
+    // --- ¡LÓGICA DE LOGIN CON MANEJO DE BLOQUEO! ---
     sendOtpBtn.addEventListener('click', async () => {
-      // El botón solo está habilitado si el reCAPTCHA se resolvió
-      const phoneNumber = celularInput.value.trim();
-      if (phoneNumber.length < 8) {
-        sendOtpError.textContent = 'Por favor, introduce un número de 8 dígitos.';
-        return sendOtpError.style.display = 'block';
-      }
-      const fullPhoneNumber = `+505${phoneNumber}`;
-      
-      // Deshabilitar botón y limpiar errores mientras se envía
-      sendOtpBtn.disabled = true;
-      sendOtpBtn.textContent = 'Enviando SMS...';
-      sendOtpError.style.display = 'none'; // Ocultar errores previos
-
-      // Asegurarse de que appVerifier esté listo
-      if (!appVerifier) {
-          sendOtpError.textContent = 'Error: El verificador reCAPTCHA no está listo. Recarga la página.';
-          sendOtpError.style.display = 'block';
-          // No re-habilitar el botón aquí, forzar recarga
-          console.error("Intento de enviar SMS pero appVerifier es null.");
-          return; 
-      }
-
-      try {
-        console.log("Llamando a signInWithPhoneNumber con reCAPTCHA visible...");
-        // El appVerifier ya contiene la respuesta del reCAPTCHA resuelto
-        confirmationResult = await auth.signInWithPhoneNumber(fullPhoneNumber, appVerifier);
-        console.log("Llamada exitosa, esperando código OTP.");
-        
-        // Ocultar partes del form de login y mostrar OTP
-        celularInput.disabled = true; 
-        recaptchaContainer.style.display = 'none'; // Ocultar el checkbox reCAPTCHA
-        sendOtpBtn.style.display = 'none'; // Ocultar el botón de enviar
-        otpContainer.style.display = 'block';
-        document.getElementById('otp-code').focus(); 
-
-      } catch (error) {
-        console.error("Error en signInWithPhoneNumber:", error); 
-        sendOtpError.textContent = `Error al enviar SMS: ${error.message}. Intenta de nuevo.`;
-        sendOtpError.style.display = 'block';
-        
-        // ¡Importante! Resetear el estado para permitir nuevo intento
-        sendOtpBtn.disabled = true; // Mantener deshabilitado hasta nuevo reCAPTCHA
-        sendOtpBtn.textContent = 'Verificar y Enviar SMS'; // Restaurar texto
-        
-        // Resetear el widget reCAPTCHA para obtener un token nuevo
-        try {
-            if (appVerifier && typeof appVerifier.render === 'function') {
-               // El método reset no existe directamente en RecaptchaVerifier V8/V9 compat
-               // La mejor forma es limpiar y volver a renderizar si es necesario o dejar que expired-callback lo maneje
-               // Por ahora, solo informamos y dejamos el botón deshabilitado
-               console.log("Error al enviar SMS, reCAPTCHA podría necesitar ser marcado de nuevo.");
-            }
-        } catch (resetError) {
-             console.error("Error al intentar resetear reCAPTCHA:", resetError);
+        // Si ya hay un temporizador activo, mostrar mensaje y salir
+        if (blockTimerInterval) {
+            sendOtpError.innerHTML = `⏳ Aún debes esperar <strong>${blockSecondsRemaining}</strong> segundos.`;
+            sendOtpError.style.display = 'block';
+            return;
         }
-      }
+
+        const phoneNumber = celularInput.value.trim();
+        if (phoneNumber.length < 8) {
+            sendOtpError.textContent = 'Por favor, introduce un número de 8 dígitos.';
+            return sendOtpError.style.display = 'block';
+        }
+        const fullPhoneNumber = `+505${phoneNumber}`;
+        
+        // Deshabilitar botón y limpiar errores mientras se envía
+        sendOtpBtn.disabled = true;
+        sendOtpBtn.textContent = 'Enviando SMS...';
+        sendOtpError.style.display = 'none'; 
+
+        if (!appVerifier) {
+            sendOtpError.textContent = 'Error: El verificador reCAPTCHA no está listo. Recarga la página.';
+            sendOtpError.style.display = 'block';
+            console.error("Intento de enviar SMS pero appVerifier es null.");
+            // No reactivar el botón, forzar recarga
+            return; 
+        }
+
+        try {
+            console.log("Llamando a signInWithPhoneNumber con reCAPTCHA visible...");
+            confirmationResult = await auth.signInWithPhoneNumber(fullPhoneNumber, appVerifier);
+            console.log("Llamada exitosa, esperando código OTP.");
+            
+            // Ocultar partes del form de login y mostrar OTP
+            celularInput.disabled = true; 
+            recaptchaContainer.style.display = 'none'; 
+            sendOtpBtn.style.display = 'none'; 
+            otpContainer.style.display = 'block';
+            document.getElementById('otp-code').focus(); 
+
+        } catch (error) {
+            console.error("Error en signInWithPhoneNumber:", error); 
+            
+            // --- ¡MANEJO CREATIVO DEL ERROR 'too-many-requests'! ---
+            if (error.code === 'auth/too-many-requests') {
+                blockSecondsRemaining = 60; // Resetear contador a 60
+                sendOtpError.innerHTML = `⏳ ¡Ups! Demasiados intentos. Por seguridad, espera un momento.<br>Podrás intentarlo de nuevo en <strong>${blockSecondsRemaining}</strong> segundos.`;
+                sendOtpError.style.display = 'block';
+                sendOtpBtn.textContent = 'Espera...'; // Cambiar texto del botón
+                sendOtpBtn.disabled = true; // Asegurarse que esté deshabilitado
+                
+                // Iniciar el temporizador visual
+                blockTimerInterval = setInterval(() => {
+                    blockSecondsRemaining--;
+                    // Actualizar mensaje (solo segundos si ya está visible)
+                    const strongTag = sendOtpError.querySelector('strong');
+                    if (strongTag) strongTag.textContent = blockSecondsRemaining;
+                    
+                    if (blockSecondsRemaining <= 0) {
+                        clearInterval(blockTimerInterval); 
+                        blockTimerInterval = null; 
+                        sendOtpBtn.disabled = false; // Reactivar el botón
+                        sendOtpBtn.textContent = 'Enviar código SMS'; // Restaurar texto original
+                        sendOtpError.style.display = 'none'; 
+                        console.log("Temporizador de bloqueo finalizado.");
+                        // Resetear reCAPTCHA para el próximo intento
+                        try {
+                           if (appVerifier && typeof appVerifier.render === 'function') {
+                              appVerifier.render().catch(e => console.error("Error re-renderizando reCAPTCHA post-bloqueo:", e));
+                              recaptchaContainer.style.display = 'block'; // Mostrar de nuevo
+                           }
+                        } catch(e){ console.error("Error intentando resetear reCAPTCHA post-bloqueo:", e);}
+                    }
+                }, 1000); // Actualizar cada segundo
+                
+            } else {
+                // Mostrar otros errores de forma normal
+                sendOtpError.textContent = `Error al enviar SMS: ${error.message}. Intenta de nuevo.`;
+                sendOtpError.style.display = 'block';
+                sendOtpBtn.disabled = true; // Mantener deshabilitado hasta que reCAPTCHA se resuelva de nuevo
+                sendOtpBtn.textContent = 'Verificar y Enviar SMS'; 
+                 // Resetear reCAPTCHA también para otros errores por si acaso
+                 try {
+                     if (appVerifier && typeof appVerifier.render === 'function') {
+                        appVerifier.render().catch(e => console.error("Error re-renderizando reCAPTCHA post-error:", e));
+                     }
+                 } catch(e){ console.error("Error intentando resetear reCAPTCHA post-error:", e);}
+            }
+            // --- FIN DEL MANEJO CREATIVO ---
+        }
     });
 
-    // --- Lógica de Confirmar Código OTP (Sin cambios necesarios) ---
-    confirmOtpBtn.addEventListener('click', async () => {
-      const code = document.getElementById('otp-code').value.trim();
-      if (code.length < 6) {
-        confirmOtpError.textContent = 'El código debe tener 6 dígitos.';
-        return confirmOtpError.style.display = 'block';
-      }
-      confirmOtpBtn.disabled = true;
-      confirmOtpBtn.textContent = 'Verificando...';
-      confirmOtpError.style.display = 'none'; 
 
-      try {
-        await confirmationResult.confirm(code);
-        window.location.reload(); 
-      } catch (error) {
-        console.error("Error en confirmationResult.confirm():", error);
-        confirmOtpError.textContent = 'Código incorrecto o expirado. Intenta de nuevo.';
-        confirmOtpError.style.display = 'block';
-        confirmOtpBtn.disabled = false;
-        confirmOtpBtn.textContent = 'Verificar e Iniciar Sesión';
-        // Podríamos resetear el flujo aquí si falla mucho
-      }
+    // --- Lógica de Confirmar Código OTP (Sin cambios) ---
+    confirmOtpBtn.addEventListener('click', async () => {
+      // ... (código igual) ...
+        const code = document.getElementById('otp-code').value.trim();
+        if (code.length < 6) {
+            confirmOtpError.textContent = 'El código debe tener 6 dígitos.';
+            return confirmOtpError.style.display = 'block';
+        }
+        confirmOtpBtn.disabled = true;
+        confirmOtpBtn.textContent = 'Verificando...';
+        confirmOtpError.style.display = 'none';
+
+        try {
+            await confirmationResult.confirm(code);
+            window.location.reload();
+        } catch (error) {
+            console.error("Error en confirmationResult.confirm():", error);
+            confirmOtpError.textContent = 'Código incorrecto o expirado. Intenta de nuevo.';
+            confirmOtpError.style.display = 'block';
+            confirmOtpBtn.disabled = false;
+            confirmOtpBtn.textContent = 'Verificar e Iniciar Sesión';
+        }
     });
 
     // --- LÓGICA DE CERRAR SESIÓN (Sin cambios) ---
