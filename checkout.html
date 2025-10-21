@@ -9,7 +9,7 @@
   <script src="auth.js"></script> <link rel="stylesheet" href="styles.css">
   
   <style>
-    ..payment-method {
+    .payment-method {
       display: flex;
       align-items: center;
       gap: 1rem;
@@ -26,6 +26,13 @@
     .payment-method .icon { font-size: 2rem; }
     .payment-method .info p { margin: 0; font-weight: 600; }
     .payment-method .info span { margin: 0; font-size: 0.9rem; color: var(--muted); }
+
+     /* Estilo añadido para centrar reCAPTCHA invisible (aunque no se vea, ayuda a evitar solapamientos) */
+    #recaptcha-container {
+      display: flex;
+      justify-content: center; /* Centrar horizontalmente */
+      margin-top: 1rem;
+    }
   </style>
 </head>
 <body>
@@ -41,22 +48,22 @@
     <a class="back-link" href="javascript:history.back()">← Volver al negocio</a>
     <h1>Finalizar Pedido</h1>
     
-    <div id="productArea" class="biz-row" style="flex-direction: row; align-items: center; ...">
-        <img id="imgProd" src="" alt="Imagen producto" ...>
+    <div id="productArea" class="biz-row" style="flex-direction: row; align-items: center; box-shadow: none; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+        <img id="imgProd" src="" alt="Imagen producto" style="width: 80px; height: 80px;">
         <div>
-            <h3 id="titulo" ...></h3>
+            <h3 id="titulo" style="font-size: 1.1rem; margin: 0;"></h3>
             <p>Precio: <strong>C$ <span id="price">0.00</span></strong></p>
         </div>
     </div>
     <div class="input-control" style="margin-top: 1rem;">
         <label for="cantidad">Cantidad</label>
-        <div class="row" ...>
-          <button id="dec" ...>-</button>
-          <span id="qty" ...>1</span>
-          <button id="inc" ...>+</button>
+        <div class="row" style="gap:0.6rem;align-items:center;">
+          <button id="dec" class="btn btn--outline" type="button" aria-label="Disminuir">-</button>
+          <span id="qty" style="font-weight:700;font-size:1.1rem; min-width: 20px; text-align: center;">1</span>
+          <button id="inc" class="btn" type="button" aria-label="Aumentar">+</button>
         </div>
     </div>
-    <p style="text-align: right; font-size: 1.2rem; ...">Total: <strong>C$ <span id="total">0.00</span></strong></p>
+    <p style="text-align: right; font-size: 1.2rem; font-weight: 600;">Total: <strong>C$ <span id="total">0.00</span></strong></p>
 
     <div id="verification-container" style="display:none;">
         <h2 style="font-size: 1.2rem; margin-top: 2rem;">Inicia Sesión para Comprar</h2>
@@ -65,22 +72,21 @@
         <div class="input-control">
           <label for="celular">Tu Número de Celular (Ej: 88997766)</label>
           <div class="row" style="gap: 0.5rem;">
-              <span style="padding: 0.8rem; ...">+505</span>
-              <input id="celular" name="celular" type="tel" placeholder="88997766" required ... />
+              <span style="padding: 0.8rem; background: #F5F5F5; border-radius: 8px; font-weight: 600;">+505</span>
+              <input id="celular" name="celular" type="tel" placeholder="88997766" required style="flex: 1;" />
           </div>
         </div>
-        <button id="send-otp-btn" type="button" class="btn" ...>Enviar código SMS</button>
-        <p id="send-otp-error" ...></p>
-        <div id="recaptcha-container" ...></div>
-    </div>
+        <button id="send-otp-btn" type="button" class="btn" style="width: 100%; padding: 0.9rem;">Enviar código SMS</button>
+        <p id="send-otp-error" style="color:#b94a48; margin-top: 1rem; display: none;"></p>
+        <div id="recaptcha-container"></div> </div>
 
-    <div id="otp-container" style="display:none; ...">
+    <div id="otp-container" style="display:none; margin-top: 1.5rem;">
         <div class="input-control">
           <label for="otp-code">Código de 6 dígitos</label>
           <input id="otp-code" type="tel" placeholder="123456" required />
         </div>
-        <button id="confirm-otp-btn" type="button" class="btn" ...>Verificar y Continuar</button>
-        <p id="confirm-otp-error" ...></p>
+        <button id="confirm-otp-btn" type="button" class="btn" style="width: 100%; padding: 0.9rem;">Verificar y Continuar</button>
+        <p id="confirm-otp-error" style="color:#b94a48; margin-top: 1rem; display: none;"></p>
     </div>
 
     <form id="checkoutForm" autocomplete="off" style="display:none;">
@@ -102,7 +108,7 @@
       </div>
       <div class="input-control">
        <label for="barrio">Dirección Exacta o Referencia</label>
-       <input id="barrio" name="barrio" type="text" ... required />
+       <input id="barrio" name="barrio" type="text" placeholder="Ej: De la pulpería 2c al sur" required />
       </div>
 
       <h2 style="font-size: 1.2rem; margin-top: 2rem;">Método de Pago</h2>
@@ -114,7 +120,7 @@
         </div>
       </div>
 
-      <button id="verificar" type="submit" class="btn" ...>Confirmar Pedido</button>
+      <button id="verificar" type="submit" class="btn" style="width: 100%; padding: 0.9rem; margin-top: 2rem;">Confirmar Pedido</button>
     </form>
 
     <div id="notification" style="display:none;margin-top:1.5rem; text-align: center;"></div>
@@ -124,16 +130,16 @@
 
   <script src="lib.js"></script>
   <script>
-    // --- ¡YA NO NECESITAMOS LA CONFIGURACIÓN DE FIREBASE AQUÍ! ---
-    // Está en auth.js
-    
-    // --- Variables Globales ---
-    let appVerifier;
+    // Variables Globales
+    let appVerifier = null; // Cambiado a null para inicialización explícita
     let confirmationResult;
     let producto, negocio, price, qty = 1;
-    let authenticatedUserPhone = null; // ¡NUEVA! Guardará el teléfono del usuario logueado
+    let authenticatedUserPhone = null; 
+    // --- ¡Variables para el temporizador de bloqueo! ---
+    let blockTimerInterval = null;
+    let blockSecondsRemaining = 60; // 60 segundos de espera inicial
 
-    // --- Selectores del DOM (sin cambios) ---
+    // Selectores del DOM
     const checkoutForm = document.getElementById('checkoutForm');
     const verificationContainer = document.getElementById('verification-container');
     const otpContainer = document.getElementById('otp-container');
@@ -143,40 +149,62 @@
     const sendOtpError = document.getElementById('send-otp-error');
     const confirmOtpError = document.getElementById('confirm-otp-error');
     const notificationDiv = document.getElementById('notification');
+    const recaptchaContainer = document.getElementById('recaptcha-container'); // Selector añadido
 
-    // --- ¡LÓGICA DE CARGA DE PÁGINA (MUY MODIFICADA)! ---
+    // --- LÓGICA DE CARGA DE PÁGINA ---
     (async () => {
-      
-      // 1. Verificamos si el usuario ya está logueado
-      const user = await getCurrentUser(); // De auth.js
+      const user = await getCurrentUser(); 
 
       if (user) {
-        // --- CASO 1: USUARIO SÍ ESTÁ LOGUEADO ---
+        // --- CASO 1: USUARIO LOGUEADO ---
         console.log("Usuario ya logueado:", user.phoneNumber);
         authenticatedUserPhone = user.phoneNumber.replace('+505', '');
-        
-        // Ocultamos los formularios de login
         verificationContainer.style.display = 'none';
         otpContainer.style.display = 'none';
-        
-        // Mostramos el formulario final
         checkoutForm.style.display = 'block';
         document.getElementById('checkout-welcome').textContent = `¡Estás comprando como ${authenticatedUserPhone}!`;
-
       } else {
-        // --- CASO 2: USUARIO NO ESTÁ LOGUEADO ---
+        // --- CASO 2: USUARIO NO LOGUEADO ---
         console.log("Usuario no logueado, mostrando verificación.");
         verificationContainer.style.display = 'block';
         
-        // Preparamos el reCAPTCHA para el login
+        // --- ¡Inicialización reCAPTCHA invisible! ---
         try {
+          recaptchaContainer.innerHTML = ''; // Limpiar por si acaso
           appVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-            'size': 'invisible'
+            'size': 'invisible', // Mantener invisible para checkout
+             'callback': (response) => {
+                  console.log("reCAPTCHA invisible verificado.");
+              },
+             'expired-callback': () => {
+                console.warn("reCAPTCHA invisible expiró.");
+                sendOtpError.textContent = "La verificación expiró. Intenta enviar el SMS de nuevo.";
+                sendOtpError.style.display = 'block';
+                sendOtpBtn.disabled = false;
+                sendOtpBtn.textContent = 'Enviar código SMS';
+                if (appVerifier) {
+                    appVerifier.clear(); 
+                    appVerifier = null; 
+                    console.log("appVerifier limpiado por expiración.");
+                }
+             }
           });
-        } catch (e) { console.error("Error inicializando reCAPTCHA", e); }
+          // Renderizar explícitamente es buena práctica
+          await appVerifier.render().catch(renderError => {
+             console.error("Error al renderizar reCAPTCHA invisible:", renderError);
+             sendOtpError.textContent = `Error al mostrar reCAPTCHA: ${renderError.message}`;
+             sendOtpError.style.display = 'block';
+          });
+          console.log("reCAPTCHA invisible renderizado OK.");
+        } catch (e) { 
+            console.error("Error crítico inicializando reCAPTCHA invisible:", e); 
+            sendOtpError.textContent = `Error crítico al iniciar reCAPTCHA: ${e.message}`;
+            sendOtpError.style.display = 'block';
+        }
+        // --- FIN Inicialización reCAPTCHA ---
       }
       
-      // 2. Cargamos los datos del producto (lógica original)
+      // Cargar datos del producto (sin cambios)
       try {
         const productId = localStorage.getItem('productoSeleccionadoID');
         const businessId = localStorage.getItem('negocioSeleccionadoID');
@@ -205,126 +233,182 @@
       }
     })();
 
-    // --- Lógica de Verificación (¡MODIFICADA!) ---
-    // (Ahora esta lógica es para INICIAR SESIÓN)
-
-    // PASO 1: Enviar SMS
+    // --- ¡LÓGICA DE VERIFICACIÓN CON MANEJO DE BLOQUEO! ---
     sendOtpBtn.addEventListener('click', async () => {
-      // (Esta función es idéntica a la de mis-pedidos.html)
-      const phoneNumber = celularInput.value.trim();
-      if (phoneNumber.length < 8) {
-        sendOtpError.textContent = 'Por favor, introduce un número de 8 dígitos.';
-        return sendOtpError.style.display = 'block';
-      }
-      const fullPhoneNumber = `+505${phoneNumber}`;
-      sendOtpBtn.disabled = true;
-      sendOtpBtn.textContent = 'Enviando SMS...';
-      sendOtpError.style.display = 'none';
-      try {
-        confirmationResult = await auth.signInWithPhoneNumber(fullPhoneNumber, appVerifier);
-        verificationContainer.style.display = 'none';
-        otpContainer.style.display = 'block';
-        document.getElementById('otp-code').focus();
-      } catch (error) {
-        console.error("Error al enviar SMS:", error);
-        sendOtpError.textContent = `Error: ${error.message}. Revisa el número.`;
-        sendOtpError.style.display = 'block';
-        sendOtpBtn.disabled = false;
-        sendOtpBtn.textContent = 'Enviar código SMS';
-      }
+        // Si ya hay un temporizador activo, mostrar mensaje y salir
+        if (blockTimerInterval) {
+            sendOtpError.innerHTML = `⏳ Aún debes esperar <strong>${blockSecondsRemaining}</strong> segundos.`;
+            sendOtpError.style.display = 'block';
+            return;
+        }
+
+        const phoneNumber = celularInput.value.trim();
+        if (phoneNumber.length < 8) {
+            sendOtpError.textContent = 'Por favor, introduce un número de 8 dígitos.';
+            return sendOtpError.style.display = 'block';
+        }
+        const fullPhoneNumber = `+505${phoneNumber}`;
+        
+        // Deshabilitar botón y limpiar errores
+        sendOtpBtn.disabled = true;
+        sendOtpBtn.textContent = 'Enviando SMS...';
+        sendOtpError.style.display = 'none';
+
+        if (!appVerifier) {
+            sendOtpError.textContent = 'Error: El verificador reCAPTCHA no está listo. Recarga la página e intenta de nuevo.';
+            sendOtpError.style.display = 'block';
+            sendOtpBtn.disabled = false; 
+            sendOtpBtn.textContent = 'Enviar código SMS';
+            console.error("Intento de enviar SMS pero appVerifier es null.");
+            return; 
+        }
+
+        try {
+            console.log("Llamando a signInWithPhoneNumber...");
+            confirmationResult = await auth.signInWithPhoneNumber(fullPhoneNumber, appVerifier);
+            console.log("Llamada exitosa, esperando código OTP.");
+            
+            // Ocultar verificación y mostrar OTP
+            verificationContainer.style.display = 'none'; // Ocultar todo el contenedor inicial
+            otpContainer.style.display = 'block';
+            document.getElementById('otp-code').focus(); 
+
+        } catch (error) {
+            console.error("Error en signInWithPhoneNumber:", error); 
+            
+            // --- ¡MANEJO CREATIVO DEL ERROR 'too-many-requests'! ---
+            if (error.code === 'auth/too-many-requests') {
+                blockSecondsRemaining = 60; 
+                sendOtpError.innerHTML = `⏳ ¡Ups! Demasiados intentos. Por seguridad, espera un momento.<br>Podrás intentarlo de nuevo en <strong>${blockSecondsRemaining}</strong> segundos.`;
+                sendOtpError.style.display = 'block';
+                sendOtpBtn.textContent = 'Espera...'; 
+                sendOtpBtn.disabled = true; 
+                
+                blockTimerInterval = setInterval(() => {
+                    blockSecondsRemaining--;
+                    const strongTag = sendOtpError.querySelector('strong');
+                    if (strongTag) strongTag.textContent = blockSecondsRemaining;
+                    
+                    if (blockSecondsRemaining <= 0) {
+                        clearInterval(blockTimerInterval); 
+                        blockTimerInterval = null; 
+                        sendOtpBtn.disabled = false; 
+                        sendOtpBtn.textContent = 'Enviar código SMS'; 
+                        sendOtpError.style.display = 'none'; 
+                        console.log("Temporizador de bloqueo finalizado.");
+                        // Re-renderizar reCAPTCHA por si acaso
+                        if (appVerifier) {
+                            appVerifier.render().catch(e => console.error("Error re-render reCAPTCHA post-bloqueo:", e));
+                        }
+                    }
+                }, 1000); 
+                
+            } else {
+                // Mostrar otros errores de forma normal
+                sendOtpError.textContent = `Error al enviar SMS: ${error.message}. Intenta de nuevo.`;
+                sendOtpError.style.display = 'block';
+                sendOtpBtn.disabled = false; // Habilitar para reintentar (puede requerir nuevo reCAPTCHA)
+                sendOtpBtn.textContent = 'Enviar código SMS';
+                // Resetear reCAPTCHA explícitamente en otros errores
+                if (appVerifier) {
+                    appVerifier.render().catch(e => console.error("Error re-render reCAPTCHA post-error:", e));
+                }
+            }
+            // --- FIN DEL MANEJO CREATIVO ---
+        }
     });
 
-    // PASO 2: Confirmar Código (¡MODIFICADO!)
+
+    // --- Lógica de Confirmar Código OTP ---
     confirmOtpBtn.addEventListener('click', async () => {
-      const code = document.getElementById('otp-code').value.trim();
-      if (code.length < 6) {
-        confirmOtpError.textContent = 'El código debe tener 6 dígitos.';
-        return confirmOtpError.style.display = 'block';
-      }
-      confirmOtpBtn.disabled = true;
-      confirmOtpBtn.textContent = 'Verificando...';
-      confirmOtpError.style.display = 'none';
+      // (Esta función es idéntica a la de mis-pedidos.html)
+        const code = document.getElementById('otp-code').value.trim();
+        if (code.length < 6) {
+            confirmOtpError.textContent = 'El código debe tener 6 dígitos.';
+            return confirmOtpError.style.display = 'block';
+        }
+        confirmOtpBtn.disabled = true;
+        confirmOtpBtn.textContent = 'Verificando...';
+        confirmOtpError.style.display = 'none';
 
-      try {
-        await confirmationResult.confirm(code);
-        
-        // ¡ÉXITO! Usuario logueado en Firebase
-        confirmOtpBtn.textContent = '¡Verificado!';
-        otpContainer.style.display = 'none';
-        checkoutForm.style.display = 'block';
-        
-        // --- ¡YA NO USAMOS localStorage.setItem! ---
-        // Guardamos el teléfono en nuestra variable global
-        authenticatedUserPhone = celularInput.value.trim();
-        document.getElementById('checkout-welcome').textContent = `¡Estás comprando como ${authenticatedUserPhone}!`;
+        try {
+            await confirmationResult.confirm(code);
+            
+            // ¡ÉXITO! Usuario logueado en Firebase
+            confirmOtpBtn.textContent = '¡Verificado!';
+            otpContainer.style.display = 'none';
+            checkoutForm.style.display = 'block';
+            
+            // Guardar teléfono en variable global
+            authenticatedUserPhone = celularInput.value.trim();
+            document.getElementById('checkout-welcome').textContent = `¡Estás comprando como ${authenticatedUserPhone}!`;
 
-      } catch (error) {
-        console.error("Error al verificar código:", error);
-        confirmOtpError.textContent = 'Código incorrecto. Intenta de nuevo.';
-        confirmOtpError.style.display = 'block';
-        confirmOtpBtn.disabled = false;
-        confirmOtpBtn.textContent = 'Verificar Código';
-      }
+        } catch (error) {
+            console.error("Error al verificar código:", error);
+            confirmOtpError.textContent = 'Código incorrecto o expirado. Intenta de nuevo.';
+            confirmOtpError.style.display = 'block';
+            confirmOtpBtn.disabled = false;
+            confirmOtpBtn.textContent = 'Verificar Código';
+        }
     });
 
-    // --- PASO 3: Enviar Pedido (¡MODIFICADO!) ---
+    // --- Lógica de Enviar Pedido (Sin cambios respecto a la versión anterior) ---
     checkoutForm.addEventListener('submit', async (ev) => {
-      ev.preventDefault();
-      const boton = document.getElementById('verificar');
-      boton.disabled = true;
-      boton.textContent = 'Enviando...';
+        // ... (el código de envío del pedido es el mismo que te di antes) ...
+        ev.preventDefault();
+        const boton = document.getElementById('verificar');
+        boton.disabled = true;
+        boton.textContent = 'Enviando...';
 
-      try {
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Z-ixBkV_0Eh7sLDL8clpcsnKttk3PRixP-wrsNO0yNOoaOvLVj1UnZH7xY5caCtn/exec";
-        const ordenId = Math.floor(Math.random() * 90000) + 10000;
-        
-        // --- ¡CAMBIO CLAVE! ---
-        // Usamos el teléfono autenticado en lugar de leer el input
-        if (!authenticatedUserPhone) {
-            throw new Error("Error de autenticación. No se encontró el número de teléfono.");
+        try {
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Z-ixBkV_0Eh7sLDL8clpcsnKttk3PRixP-wrsNO0yNOoaOvLVj1UnZH7xY5caCtn/exec";
+            const ordenId = Math.floor(Math.random() * 90000) + 10000;
+            
+            if (!authenticatedUserPhone) {
+                throw new Error("Error de autenticación. No se encontró el número de teléfono.");
+            }
+
+            const payload = {
+              ordenId: ordenId,
+              cliente: {
+                nombre: document.getElementById('nombre').value.trim(),
+                celular: authenticatedUserPhone, // Usar número autenticado
+                lugar: document.getElementById('lugar').value,
+                barrio: document.getElementById('barrio').value.trim()
+              },
+              negocio: { id: negocio.ID, nombre: negocio.NombreNegocio },
+              producto: {
+                nombre: producto.Nombre,
+                qty: qty,
+                precio: price.toFixed(2),
+                total: (price * qty).toFixed(2),
+              },
+              metodoPago: 'Efectivo contra entrega' 
+            };
+
+            const response = await fetch(SCRIPT_URL, {
+              method: 'POST',
+              body: JSON.stringify({ action: 'addOrder', payload: payload })
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+              notificationDiv.style.display = 'block';
+              notificationDiv.innerHTML = `<h3>Pedido enviado con éxito ✅</h3>
+                <p><b>Número de orden:</b> ${ordenId}</p>
+                <p>El negocio ha sido notificado. Puedes ver el estado en "Mis Pedidos".</p>
+                <a href="seguimiento.html?id=${ordenId}" class="btn" style="margin-top: 1rem;">Seguir mi Pedido en Vivo</a>`;
+              
+              checkoutForm.style.display = 'none';
+              document.getElementById('productArea').style.display = 'none';
+            } else {
+              throw new Error(result.message || 'Error desconocido del servidor.');
+            }
+        } catch (err) {
+            alert(`Ocurrió un error al procesar el pedido: ${err.message}.`);
+            boton.disabled = false;
+            boton.textContent = 'Confirmar Pedido';
         }
-
-        const payload = {
-          ordenId: ordenId,
-          cliente: {
-            nombre: document.getElementById('nombre').value.trim(),
-            celular: authenticatedUserPhone, // <-- ¡USAMOS EL NÚMERO AUTENTICADO!
-            lugar: document.getElementById('lugar').value,
-            barrio: document.getElementById('barrio').value.trim()
-          },
-          negocio: { id: negocio.ID, nombre: negocio.NombreNegocio },
-          producto: {
-            nombre: producto.Nombre,
-            qty: qty,
-            precio: price.toFixed(2),
-            total: (price * qty).toFixed(2),
-          },
-          metodoPago: 'Efectivo contra entrega' 
-        };
-
-        const response = await fetch(SCRIPT_URL, {
-          method: 'POST',
-          body: JSON.stringify({ action: 'addOrder', payload: payload })
-        });
-        const result = await response.json();
-
-        if (result.status === 'success') {
-          notificationDiv.style.display = 'block';
-          notificationDiv.innerHTML = `<h3>Pedido enviado con éxito ✅</h3>
-            <p><b>Número de orden:</b> ${ordenId}</p>
-            <p>El negocio ha sido notificado. Puedes ver el estado en "Mis Pedidos".</p>
-            <a href="seguimiento.html?id=${ordenId}" class="btn" style="margin-top: 1rem;">Seguir mi Pedido en Vivo</a>`;
-          
-          checkoutForm.style.display = 'none';
-          document.getElementById('productArea').style.display = 'none';
-        } else {
-          throw new Error(result.message || 'Error desconocido del servidor.');
-        }
-      } catch (err) {
-        alert(`Ocurrió un error al procesar el pedido: ${err.message}.`);
-        boton.disabled = false;
-        boton.textContent = 'Confirmar Pedido';
-      }
     });
   </script>
 </body>
