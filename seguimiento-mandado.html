@@ -49,15 +49,15 @@
   <footer class="site-footer">&copy; PediloYa</footer>
   <script src="lib.js"></script>
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Z-ixBkV_0Eh7sLDL8clpcsnKttk3PRixP-wrsNO0yNOoaOvLVj1UnZH7xY5caCtn/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXyXzIAelblfS89-_uD29B4M1ksXzeUajIueaAid-11l6AO68GSNmoU7x3QHTu4xr2/exec";
     const orderId = new URLSearchParams(window.location.search).get('id');
     document.getElementById('orderId').textContent = orderId || 'No especificado';
 
-    // --- ¡ESTADOS SIMPLIFICADOS Y SINCRONIZADOS! ---
+    // --- Â¡ESTADOS SIMPLIFICADOS Y SINCRONIZADOS! ---
     const estados = [
-        { key: 'Pendiente', title: 'Solicitud Recibida', desc: 'Hemos recibido tu solicitud. El repartidor te contactará en breve.' },
-        { key: 'En Proceso', title: 'Mandado en Proceso', desc: 'El repartidor ha confirmado contigo y ya está trabajando en tu solicitud.' },
-        { key: 'Entregado', title: 'Mandado Completado', desc: '¡Tu mandado ha sido completado con éxito! Gracias por usar PediloYa.' }
+        { key: 'Pendiente', title: 'Solicitud Recibida', desc: 'Hemos recibido tu solicitud. El repartidor te contactarÃ¡ en breve.' },
+        { key: 'En Proceso', title: 'Mandado en Proceso', desc: 'El repartidor ha confirmado contigo y ya estÃ¡ trabajando en tu solicitud.' },
+        { key: 'Entregado', title: 'Mandado Completado', desc: 'Â¡Tu mandado ha sido completado con Ã©xito! Gracias por usar PediloYa.' }
     ];
 
     async function fetchOrderStatus() {
@@ -90,7 +90,7 @@
           return;
       }
       
-      // --- LÓGICA DE RENDERIZADO REPARADA Y SIMPLIFICADA ---
+      // --- LÃ“GICA DE RENDERIZADO REPARADA Y SIMPLIFICADA ---
       const currentIndex = estados.findIndex(s => s.key === currentStatus);
       
       let html = '<ul class="timeline">';
@@ -114,4 +114,5 @@
     fetchOrderStatus();
   </script>
 </body>
+
 </html>
