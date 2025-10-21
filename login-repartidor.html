@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acceso para Repartidor - PediloYa</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+  <script src="auth.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="logo" href="index.html">
+        <img src="logo.png" alt="PediloYa logo" onerror="this.style.display='none'">
+      </a>
+    </div>
+  </header>
+
+  <main class="container" style="max-width: 420px; text-align: center;">
+    <h1>Portal para Repartidor</h1>
+    <p>Introduce tus credenciales para gestionar los mandados.</p>
+
+    <form id="loginForm">
+      <div class="input-control">
+        <label for="usuario">Usuario</label>
+        <input id="usuario" type="text" required />
+      </div>
+      <div class="input-control">
+        <label for="contrasena">Contraseña</label>
+        <input id="contrasena" type="password" required />
+      </div>
+      <button id="loginButton" type="submit" class="btn" style="width: 100%; padding: 0.9rem;">Acceder</button>
+    </form>
+    <p id="errorMessage" style="color:#b94a48; margin-top: 1rem; display: none;"></p>
+  </main>
+
+  <footer class="site-footer">&copy; PediloYa</footer>
+
+  <script src="lib.js"></script>
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Z-ixBkV_0Eh7sLDL8clpcsnKttk3PRixP-wrsNO0yNOoaOvLVj1UnZH7xY5caCtn/exec";
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const loginButton = document.getElementById('loginButton');
+      const errorMessage = document.getElementById('errorMessage');
+      loginButton.disabled = true;
+      loginButton.textContent = 'Verificando...';
+      errorMessage.style.display = 'none';
+
+      try {
+        const response = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'verifyRepartidor',
+            payload: {
+              usuario: document.getElementById('usuario').value.trim(),
+              contrasena: document.getElementById('contrasena').value.trim()
+            }
+          })
+        });
+        const result = await response.json();
+        
+        if (result.status === 'success' && result.isValid) {
+          loginButton.textContent = 'Acceso Concedido';
+          // Guardamos un "boleto" temporal para dar acceso al panel
+          sessionStorage.setItem('repartidorToken', 'true');
+          // --- ¡LÍNEA CORREGIDA! ---
+          // Ahora redirigimos al panel general, sin un ID de orden específico.
+          window.location.href = 'panel-repartidor.html';
+        } else {
+          errorMessage.textContent = 'Credenciales incorrectas. Inténtalo de nuevo.';
+          errorMessage.style.display = 'block';
+          loginButton.disabled = false;
+          loginButton.textContent = 'Acceder';
+        }
+      } catch (error) {
+        errorMessage.textContent = 'Error de conexión. Revisa tu internet.';
+        errorMessage.style.display = 'block';
+        loginButton.disabled = false;
+        loginButton.textContent = 'Acceder';
+      }
+    });
+  </script>
+</body>
+</html>

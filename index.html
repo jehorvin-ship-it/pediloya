@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PediloYa - Inicio</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+  <script src="auth.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="logo" href="index.html">
+        <img src="logo.png" alt="PediloYa logo" onerror="this.style.display='none'">
+        <span class="brand-title">PediloYa</span>
+      </a>
+      <div class="search-wrap">
+        <div class="search" role="search">
+          <svg class="icon" viewBox="0 0 24 24" width="18" height="18"><path fill="#9CA3AF" d="M21 21l-4.35-4.35"></path></svg>
+          <input id="searchInput" type="search" placeholder="Buscar negocios o productos..." aria-label="Buscar">
+        </div>
+      </div>
+      <div class="header-actions">
+        <a href="mis-pedidos.html" title="Mis Pedidos" style="font-weight: 600; color: var(--muted); text-decoration: none; font-size: 0.9rem;">📦 Mis Pedidos</a>
+        <a href="login.html" title="Acceso para Negocios" style="font-weight: 600; color: var(--muted); text-decoration: none; font-size: 0.9rem;">🏪 Negocios</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" id="main">
+    <section class="hero-banner">
+      <div class="hero-text">
+        <h2>Almuerzos hasta C$150</h2>
+        <p>Pedí tu plato favorito a un precio increíble.</p>
+      </div>
+      <img src="https://i.ibb.co/FbBLjDhB/PLATO3-Photoroom.png" alt="Plato de comida en oferta">
+    </section>
+
+    <div id="categories" class="category-grid" aria-live="polite">
+    </div>
+
+    <h2 id="main-title">Negocios destacados</h2>
+    <div id="list"></div>
+  </main>
+
+  <footer class="site-footer">© PediloYa</footer>
+
+  <nav class="bottom-nav">
+    <a href="index.html" class="nav-link active">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg>
+      <span>Inicio</span>
+    </a>
+    <a href="mis-pedidos.html" class="nav-link">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+      <span>Mis Pedidos</span>
+    </a>
+    <a href="login.html" class="nav-link">
+       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.25a.75.75 0 01-.75-.75V10.5a.75.75 0 01.75-.75h19.5a.75.75 0 01.75.75v9.75a.75.75 0 01-.75-.75h-4.5m-7.5 0h7.5m-7.5 0l-1.5-7.5h10.5l-1.5 7.5m-7.5 0h7.5" /></svg>
+      <span>Negocios</span>
+    </a>
+  </nav>
+
+  <script src="lib.js"></script>
+  <script>
+    (async () => {
+      try {
+        // --- LÓGICA DE CARGA ROBUSTA ---
+        // 1. Cargamos primero los negocios, que es lo más importante.
+        const negocios = await fetchSheetByGid(GID_NEGOCIOS);
+        const activos = negocios.filter(n => (n.Estado || '1') !== '0');
+        
+        // 2. Cargamos las calificaciones por separado para que no rompa la app si falla.
+        let summary = {}; // Empezamos con un resumen vacío
+        try {
+          const ratingsResponse = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getRatingsSummary' })
+          });
+          const ratingsResult = await ratingsResponse.json();
+          if (ratingsResult.status === 'success') {
+            summary = ratingsResult.summary || {};
+          }
+        } catch (ratingError) {
+          console.error("No se pudieron cargar las calificaciones:", ratingError);
+          // La app continúa sin calificaciones, pero no se rompe.
+        }
+
+        // Lógica de Categorías
+        const cats = Array.from(new Set(activos.map(n => n.Categoria || 'Sin categoría')));
+        const catWrap = document.getElementById('categories');
+        const catImages = {
+            'Restaurante': 'https://i.ibb.co/HL6tzqm9/Restarurante.png', 'Mercado': 'https://i.ibb.co/8DpZxH5h/mercado.png', 'Hogar y Servicios': 'https://i.ibb.co/G3B0gqM6/Hogar-y-Servicios.jpg', 'Farmacias': 'https://i.ibb.co/4ZzhsHk0/Farmacia.png', 'Tiendas': 'https://i.ibb.co/vxmKM3zK/tienda.png', 'Mandados': 'https://i.ibb.co/8L1BT9yL/Mandado.png',
+        };
+        cats.forEach(c => {
+          const defaultImg = 'https://i.ibb.co/dKkmdT3/default-cat.png';
+          const a = document.createElement('a');
+          a.className = 'category-card';
+          if (c === 'Mandados') { a.href = 'mandado.html'; } 
+          else { a.href = `categoria.html?cat=${encodeURIComponent(c)}`; }
+          a.innerHTML = `<img src="${catImages[c] || defaultImg}" alt="${c}"><span>${c}</span>`;
+          catWrap.appendChild(a);
+        });
+
+        // Lógica de Negocios Destacados
+        const destacados = activos.filter(b => b.Destacado === '1');
+        const list = document.getElementById('list');
+        if (!destacados.length) { 
+          list.innerHTML = '<p>No hay negocios destacados en este momento.</p>'; 
+        } else {
+          // Pasamos el resumen de calificaciones al crear las tarjetas
+          destacados.forEach(b => list.appendChild(createBizRow(b, summary)));
+        }
+        
+        // Lógica de Búsqueda Inteligente
+        const input = document.getElementById('searchInput');
+        const mainTitle = document.getElementById('main-title');
+        input.addEventListener('input', async (e) => {
+          const q = (e.target.value || '').toLowerCase().trim();
+          if (!q) {
+            mainTitle.textContent = 'Negocios destacados';
+            list.innerHTML = '';
+            if (!destacados.length) { list.innerHTML = '<p>No hay negocios destacados.</p>'; }
+            else { destacados.forEach(b => list.appendChild(createBizRow(b, summary))); }
+            return;
+          }
+          mainTitle.textContent = `Resultados para "${q}"`;
+          list.innerHTML = '<p>Buscando...</p>';
+          const productos = await fetchSheetByGid(GID_PRODUCTOS);
+          const matchingProducts = productos.filter(p => ((p.Nombre || '').toLowerCase().includes(q)) || ((p.Descripcion || '').toLowerCase().includes(q)));
+          const matchingBusinesses = activos.filter(b => (b.NombreNegocio || '').toLowerCase().includes(q));
+          list.innerHTML = '';
+          if (matchingProducts.length > 0) {
+            list.innerHTML += '<h3>Productos Encontrados</h3>';
+            matchingProducts.forEach(p => {
+              const negocioDelProducto = activos.find(b => b.ID === p.BusinessID);
+              if (negocioDelProducto) { list.appendChild(createProductResultRow(p, negocioDelProducto)); }
+            });
+          }
+          if (matchingBusinesses.length > 0) {
+            list.innerHTML += '<h3 style="margin-top: 1.5rem;">Negocios Encontrados</h3>';
+            matchingBusinesses.forEach(b => { list.appendChild(createBizRow(b, summary)); });
+          }
+          if (matchingProducts.length === 0 && matchingBusinesses.length === 0) {
+            list.innerHTML = '<p>No se encontraron resultados para tu búsqueda.</p>';
+          }
+        });
+
+        function createProductResultRow(product, business) {
+          const precio = (product.PrecioOferta && product.PrecioOferta !== '') ? Number(product.PrecioOferta) : Number(product.Precio || 0);
+          const d = document.createElement('div');
+          d.className = 'biz-row';
+          d.innerHTML = `
+            <img src="${product.Imagen || ''}" alt="${product.Nombre || 'Producto'}" onerror="this.src='https://via.placeholder.com/300x200?text=Sin'">
+            <div>
+              <h3>${product.Nombre || '—'}</h3>
+              <p>Vendido por: <strong>${business.NombreNegocio || '—'}</strong></p>
+              <p style="font-size: 1.1rem; font-weight: 600; color: var(--dark);">C$ ${precio.toFixed(2)}</p>
+              <div class="row" style="margin-top: 0.5rem;"><a class="btn" href="negocio.html?id=${encodeURIComponent(business.ID)}">Ir a la tienda</a></div>
+            </div>`;
+          return d;
+        }
+
+        // --- ¡FUNCIÓN MODIFICADA PARA MOSTRAR CALIFICACIONES! ---
+        function createBizRow(b, ratingsSummary){
+          const delivery = b.DeliveryFee && "" !== b.DeliveryFee ? `Delivery: C$ ${Number(b.DeliveryFee).toFixed(2)}` : "Sin delivery";
+          
+          let ratingHtml = '';
+          const ratingData = ratingsSummary[b.ID];
+          if (ratingData) {
+            ratingHtml = `
+              <div class="rating-display">
+                <span class="star-icon">⭐️</span>
+                <span class="rating-score">${ratingData.promedio}</span>
+                <span class="rating-votes">(${ratingData.votos})</span>
+              </div>
+            `;
+          }
+
+          const d = document.createElement("div");
+          d.className = "biz-row";
+          d.innerHTML = `
+            <img src="${b.Imagen||""}" alt="${b.NombreNegocio||"Imagen negocio"}" onerror="this.src='https://via.placeholder.com/300x200?text=Sin'">
+            <div>
+              <h3>${b.NombreNegocio||"—"}</h3>
+              ${ratingHtml}
+              <p>${b.Categoria||""} • ${b.Horario||""}</p>
+              <p>${b.Descripcion||""}</p>
+              <div class="row">
+                <a class="btn" href="negocio.html?id=${encodeURIComponent(b.ID)}">Ver productos</a>
+                <span style="font-weight: 600; margin-left: auto;">${delivery}</span>
+              </div>
+            </div>`;
+          return d;
+        }
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById('list').innerHTML = '<p>Error cargando datos. Reintente.</p>';
+      }
+    })();
+  </script>
+</body>
+</html>

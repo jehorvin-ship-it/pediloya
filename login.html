@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Acceso para Negocios - PediloYa</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+  <script src="auth.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="logo" href="index.html">
+        <img src="logo.png" alt="PediloYa logo" onerror="this.style.display='none'">
+        <span class="brand-title">PediloYa</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="container" style="max-width: 420px; text-align: center;">
+    <h1 style="margin-top: 2rem;">Portal para Negocios</h1>
+    <p class="muted" style="margin-bottom: 2rem;">Introduce tu clave de acceso para gestionar tus pedidos.</p>
+
+    <form id="loginForm">
+      <div class="input-control">
+        <label for="clave">Tu Clave de Negocio</label>
+        <input id="clave" name="clave" type="password" placeholder="........" required />
+      </div>
+      <button id="loginButton" type="submit" class="btn" style="width: 100%; padding: 0.9rem;">Entrar al Panel</button>
+    </form>
+    <p id="errorMessage" style="color:#b94a48; margin-top: 1rem; display: none;"></p>
+  </main>
+
+  <footer class="site-footer">&copy; PediloYa</footer>
+
+  <script src="lib.js"></script>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const claveInput = document.getElementById('clave');
+      const loginButton = document.getElementById('loginButton');
+      const errorMessage = document.getElementById('errorMessage');
+
+      const clave = claveInput.value.trim();
+      if (!clave) return;
+
+      loginButton.disabled = true;
+      loginButton.textContent = 'Verificando...';
+      errorMessage.style.display = 'none';
+
+      try {
+        // 1. Cargamos la lista de todos los negocios
+        const negocios = await fetchSheetByGid(GID_NEGOCIOS);
+        
+        // 2. Buscamos si alguno tiene la clave introducida
+        const negocioEncontrado = negocios.find(negocio => negocio.Clave === clave);
+        
+        if (negocioEncontrado) {
+          // 3. ¡Éxito! Redirigimos al panel de admin con el ID correcto
+          loginButton.textContent = '¡Acceso concedido!';
+          window.location.href = `admin.html?id=${negocioEncontrado.ID}`;
+        } else {
+          // 4. Error: La clave no coincide con ningún negocio
+          errorMessage.textContent = 'Clave incorrecta. Por favor, inténtalo de nuevo.';
+          errorMessage.style.display = 'block';
+          loginButton.disabled = false;
+          loginButton.textContent = 'Entrar al Panel';
+        }
+
+      } catch (error) {
+        console.error('Error durante el login:', error);
+        errorMessage.textContent = 'No se pudo conectar. Revisa tu conexión a internet.';
+        errorMessage.style.display = 'block';
+        loginButton.disabled = false;
+        loginButton.textContent = 'Entrar al Panel';
+      }
+    });
+  </script>
+</body>
+</html>

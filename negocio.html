@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Negocio - Productos</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+  <script src="auth.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="logo" href="index.html">
+        <img src="logo.png" alt="PediloYa logo" onerror="this.style.display='none'">
+      </a>
+      <div class="search-wrap">
+        <div class="search">
+          <svg class="icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#9CA3AF" d="M21 21l-4.35-4.35"></path></svg>
+          <input placeholder="Buscar en este negocio..." aria-label="Buscar">
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <a class="back-link" href="javascript:history.back()">← Volver</a>
+
+    <div id="businessHeader" class="biz-row" style="align-items:center; box-shadow: none; border: none; padding-left: 0; padding-right: 0;"></div>
+
+    <h2>Productos</h2>
+    <div id="products" class="product-grid"></div>
+  </main>
+
+  <footer class="site-footer">© PediloYa</footer>
+
+  <script src="lib.js"></script>
+  <script>
+    (async () => {
+      try {
+        const id = qParam('id');
+        if (!id) { alert('Negocio no especificado'); location.href='index.html'; return; }
+        const negocios = await fetchSheetByGid(GID_NEGOCIOS);
+        const negocio = negocios.find(b => b.ID === id);
+        if (!negocio) { alert('Negocio no encontrado'); location.href='index.html'; return; }
+
+        // Header del negocio (imagen + info)
+        const h = document.getElementById('businessHeader');
+        const delivery = negocio.DeliveryFee && negocio.DeliveryFee !== '' ? `Delivery: C$ ${Number(negocio.DeliveryFee).toFixed(2)}` : 'Sin delivery';
+        h.innerHTML = `
+          <img src="${negocio.Imagen || ''}" alt="${negocio.NombreNegocio || 'Imagen'}">
+          <div>
+            <h1>${negocio.NombreNegocio || '—'}</h1>
+            <p>${negocio.Descripcion || ''}</p>
+            <p>${negocio.Direccion || ''} • ${negocio.Horario || ''}</p>
+            <div class="row" style="justify-content: flex-start;">
+              <span style="font-weight: 600;">${delivery}</span>
+            </div>
+          </div>
+        `;
+
+        // Productos del negocio
+        const productos = await fetchSheetByGid(GID_PRODUCTOS);
+        const activos = productos.filter(p => (p.Estado || '1') !== '0' && p.BusinessID === id);
+        const container = document.getElementById('products');
+        if (!activos.length) { container.innerHTML = '<p>Este negocio no tiene productos listados actualmente.</p>'; return; }
+
+        activos.forEach(p => {
+          const precio = (p.PrecioOferta && p.PrecioOferta !== '') ? Number(p.PrecioOferta) : Number(p.Precio || 0);
+          const moneda = p.Moneda || 'C$';
+          const card = document.createElement('div');
+          card.className = 'product'; // Usando la nueva clase de CSS
+          card.innerHTML = `
+            <img src="${p.Imagen || ''}" alt="${p.Nombre || 'Producto'}" onerror="this.src='https://via.placeholder.com/300x200?text=Sin'">
+            <div class="title">${p.Nombre || '—'}</div>
+            <div class="meta">${p.Descripcion || ''}</div>
+            <div class="row" style="justify-content: space-between;">
+              <div>
+                <div class="price">${moneda} ${precio.toFixed(2)}</div>
+                ${p.PrecioOferta && p.PrecioOferta !== '' ? `<div style="font-size:0.85rem;color:var(--muted);text-decoration:line-through">${moneda} ${Number(p.Precio||0).toFixed(2)}</div>` : ''}
+              </div>
+              <a href="checkout.html" class="btn add-btn">Comprar</a>
+            </div>
+          `;
+
+          // Guardamos localStorage antes de navegar a checkout
+          card.querySelector('a')?.addEventListener('click', () => {
+            localStorage.setItem('productoSeleccionadoID', p.ID);
+            localStorage.setItem('negocioSeleccionadoID', id);
+          });
+
+          container.appendChild(card);
+        });
+
+      } catch (err)
+ {
+        console.error(err);
+        document.getElementById('products').innerHTML = '<p>Ocurrió un error al cargar los productos.</p>';
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,277 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Solicitar un Mandado - PediloYa</title>
+  
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="auth.js"></script> <link rel="stylesheet" href="styles.css">
+  
+  <style>
+    .payment-method {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: #F5F5F5;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .payment-method.selected {
+      border-color: var(--primary);
+      background: #fff;
+      box-shadow: 0 0 0 2px var(--primary);
+    }
+    .payment-method .icon { font-size: 2rem; }
+    .payment-method .info p { margin: 0; font-weight: 600; }
+    .payment-method .info span { margin: 0; font-size: 0.9rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="logo" href="index.html">
+        <img src="logo.png" alt="PediloYa logo" onerror="this.style.display='none'">
+      </a>
+    </div>
+  </header>
+
+  <main class="container" style="max-width: 600px;">
+    <a class="back-link" href="index.html">← Volver a Inicio</a>
+    <h1>Solicitar un Mandado</h1>
+    
+    <div id="verification-container" style="display:none;">
+        <h2 style="font-size: 1.2rem; margin-top: 2rem;">Inicia Sesión para Solicitar</h2>
+        <p class="muted">Verifica tu número para continuar. Esto creará tu cuenta.</p>
+        
+        <div class="input-control">
+          <label for="celular">Tu Número de Celular (Ej: 88997766)</label>
+          <div class="row" style="gap: 0.5rem;">
+              <span style="padding: 0.8rem; ...">+505</span>
+              <input id="celular" name="celular" type="tel" placeholder="88997766" required ... />
+          </div>
+        </div>
+        <button id="send-otp-btn" type="button" class="btn" ...>Enviar código SMS</button>
+        <p id="send-otp-error" ...></p>
+        <div id="recaptcha-container" ...></div>
+    </div>
+
+    <div id="otp-container" style="display:none; ...">
+        <div class="input-control">
+          <label for="otp-code">Código de 6 dígitos</label>
+          <input id="otp-code" type="tel" placeholder="123456" required />
+        </div>
+        <button id="confirm-otp-btn" type="button" class="btn" ...>Verificar y Continuar</button>
+        <p id="confirm-otp-error" ...></p>
+    </div>
+
+    <form id="mandadoForm" autocomplete="off" style="display:none;">
+      <p id="mandado-welcome" class="muted" style="margin-top: 2rem;">¡Estás solicitando como ...!</p>
+
+      <div class="input-control">
+        <label for="descripcion">¿Qué necesitas que hagamos?</label>
+        <textarea id="descripcion" ... required></textarea>
+      </div>
+      <div class="input-control">
+        <label for="origen">Dirección de Origen (si aplica)</label>
+        <input id="origen" type="text" ...>
+      </div>
+      <div class="input-control">
+        <label for="destino">Dirección de Entrega</label>
+        <input id="destino" type="text" ... required>
+      </div>
+
+      <h2 style="font-size: 1.2rem; margin-top: 2rem;">Tus Datos de Contacto</h2>
+      <div class="input-control">
+        <label for="nombre">Tu Nombre Completo</label>
+        <input id="nombre" type="text" placeholder="Escribe tu nombre" required />
+      </div>
+      
+      <h2 style="font-size: 1.2rem; margin-top: 2rem;">Método de Pago</h2>
+      <div class="payment-method selected">
+        <span class="icon">💵</span>
+        <div class="info">
+          <p>Efectivo contra entrega</p>
+          <span>Pagarás el costo del mandado al repartidor al finalizar.</span>
+        </div>
+      </div>
+
+      <button id="solicitarBtn" type="submit" class="btn" ...>Enviar Solicitud</button>
+    </form>
+
+    <div id="notification" style="display:none;margin-top:1.5rem; text-align: center;"></div>
+  </main>
+
+  <footer class="site-footer">© PediloYa</footer>
+
+  <script src="lib.js"></script>
+  <script>
+    // --- ¡YA NO NECESITAMOS LA CONFIGURACIÓN DE FIREBASE AQUÍ! ---
+    // Está en auth.js
+
+    // --- Variables Globales ---
+    let appVerifier;
+    let confirmationResult;
+    let authenticatedUserPhone = null; // ¡NUEVA!
+
+    // --- Selectores del DOM ---
+    const mandadoForm = document.getElementById('mandadoForm');
+    const verificationContainer = document.getElementById('verification-container');
+    const otpContainer = document.getElementById('otp-container');
+    const sendOtpBtn = document.getElementById('send-otp-btn');
+    const confirmOtpBtn = document.getElementById('confirm-otp-btn');
+    const celularInput = document.getElementById('celular');
+    const sendOtpError = document.getElementById('send-otp-error');
+    const confirmOtpError = document.getElementById('confirm-otp-error');
+    const notificationDiv = document.getElementById('notification');
+
+    // --- ¡LÓGICA DE CARGA DE PÁGINA (MUY MODIFICADA)! ---
+    (async () => {
+      // 1. Verificamos si el usuario ya está logueado
+      const user = await getCurrentUser(); // De auth.js
+
+      if (user) {
+        // --- CASO 1: USUARIO SÍ ESTÁ LOGUEADO ---
+        console.log("Usuario ya logueado:", user.phoneNumber);
+        authenticatedUserPhone = user.phoneNumber.replace('+505', '');
+        
+        // Ocultamos los formularios de login
+        verificationContainer.style.display = 'none';
+        otpContainer.style.display = 'none';
+        
+        // Mostramos el formulario final
+        mandadoForm.style.display = 'block';
+        document.getElementById('mandado-welcome').textContent = `¡Estás solicitando como ${authenticatedUserPhone}!`;
+
+      } else {
+        // --- CASO 2: USUARIO NO ESTÁ LOGUEADO ---
+        console.log("Usuario no logueado, mostrando verificación.");
+        verificationContainer.style.display = 'block';
+        
+        // Preparamos el reCAPTCHA para el login
+        try {
+          appVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+            'size': 'invisible'
+          });
+        } catch (e) { console.error("Error inicializando reCAPTCHA", e); }
+      }
+    })();
+
+    // --- Lógica de Verificación (¡MODIFICADA!) ---
+    // (Ahora esta lógica es para INICIAR SESIÓN)
+
+    // PASO 1: Enviar SMS
+    sendOtpBtn.addEventListener('click', async () => {
+      // (Esta función es idéntica a la de mis-pedidos.html)
+      const phoneNumber = celularInput.value.trim();
+      if (phoneNumber.length < 8) {
+        sendOtpError.textContent = 'Por favor, introduce un número de 8 dígitos.';
+        return sendOtpError.style.display = 'block';
+      }
+      const fullPhoneNumber = `+505${phoneNumber}`;
+      sendOtpBtn.disabled = true;
+      sendOtpBtn.textContent = 'Enviando SMS...';
+      sendOtpError.style.display = 'none';
+      try {
+        confirmationResult = await auth.signInWithPhoneNumber(fullPhoneNumber, appVerifier);
+        verificationContainer.style.display = 'none';
+        otpContainer.style.display = 'block';
+        document.getElementById('otp-code').focus();
+      } catch (error) {
+        console.error("Error al enviar SMS:", error);
+        sendOtpError.textContent = `Error: ${error.message}. Revisa el número.`;
+        sendOtpError.style.display = 'block';
+        sendOtpBtn.disabled = false;
+        sendOtpBtn.textContent = 'Enviar código SMS';
+      }
+    });
+
+    // PASO 2: Confirmar Código (¡MODIFICADO!)
+    confirmOtpBtn.addEventListener('click', async () => {
+      const code = document.getElementById('otp-code').value.trim();
+      if (code.length < 6) {
+        confirmOtpError.textContent = 'El código debe tener 6 dígitos.';
+        return confirmOtpError.style.display = 'block';
+      }
+      confirmOtpBtn.disabled = true;
+      confirmOtpBtn.textContent = 'Verificando...';
+      confirmOtpError.style.display = 'none';
+
+      try {
+        await confirmationResult.confirm(code);
+        
+        // ¡ÉXITO! Usuario logueado en Firebase
+        confirmOtpBtn.textContent = '¡Verificado!';
+        otpContainer.style.display = 'none';
+        mandadoForm.style.display = 'block';
+        
+        // --- ¡YA NO USAMOS localStorage.setItem! ---
+        // Guardamos el teléfono en nuestra variable global
+        authenticatedUserPhone = celularInput.value.trim();
+        document.getElementById('mandado-welcome').textContent = `¡Estás solicitando como ${authenticatedUserPhone}!`;
+
+      } catch (error) {
+        console.error("Error al verificar código:", error);
+        confirmOtpError.textContent = 'Código incorrecto. Intenta de nuevo.';
+        confirmOtpError.style.display = 'block';
+        confirmOtpBtn.disabled = false;
+        confirmOtpBtn.textContent = 'Verificar Código';
+      }
+    });
+
+    // --- PASO 3: Enviar Mandado (¡MODIFICADO!) ---
+    mandadoForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const boton = document.getElementById('solicitarBtn');
+      boton.disabled = true;
+      boton.textContent = 'Enviando...';
+
+      try {
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Z-ixBkV_0Eh7sLDL8clpcsnKttk3PRixP-wrsNO0yNOoaOvLVj1UnZH7xY5caCtn/exec";
+        const ordenId = `M-${Math.floor(Math.random() * 90000) + 10000}`;
+        
+        // --- ¡CAMBIO CLAVE! ---
+        // Usamos el teléfono autenticado en lugar de leer el input
+        if (!authenticatedUserPhone) {
+            throw new Error("Error de autenticación. No se encontró el número de teléfono.");
+        }
+
+        const payload = {
+          ordenId: ordenId,
+          descripcion: document.getElementById('descripcion').value.trim(),
+          origen: document.getElementById('origen').value.trim(),
+          destino: document.getElementById('destino').value.trim(),
+          cliente: {
+            nombre: document.getElementById('nombre').value.trim(),
+            celular: authenticatedUserPhone // <-- ¡USAMOS EL NÚMERO AUTENTICADO!
+          },
+          metodoPago: 'Efectivo (a cotizar)'
+        };
+
+        const response = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'addMandado', payload: payload })
+        });
+        const result = await response.json();
+
+        if (result.status === 'success') {
+          notificationDiv.style.display = 'block';
+          notificationDiv.innerHTML = `<h3>Solicitud Enviada ✅</h3>
+            <p>Hemos recibido tu solicitud con el ID <b>${ordenId}</b>.</p>
+            <p>Nos pondremos en contacto contigo en breve para confirmar.</p>
+            <a href="seguimiento-mandado.html?id=${ordenId}" class="btn" style="margin-top: 1rem;">Seguir mi Mandado</a>`;
+          mandadoForm.style.display = 'none';
+        } else {
+          throw new Error(result.message || 'Error desconocido.');
+        }
+      } catch (err) {
+        alert(`Ocurrió un error al enviar tu solicitud: ${err.message}.`);
+        boton.disabled = false;
+        boton.textContent = 'Enviar Solicitud';
+      }
+    });
+  </script>
+</body>
+</html>

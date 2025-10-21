@@ -1,0 +1,262 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Centro de Misiones - PediloYa</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+  <script src="auth.js"></script>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Estilos específicos para el panel del repartidor */
+    body { background-color: #F5F5F5; }
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+    .mission-column {
+      background-color: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 1rem;
+      border: 1px solid var(--border-color);
+    }
+    .mission-column h2 { font-size: 1.1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1rem; margin-top: 0; }
+    .mission-card {
+      background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px;
+      padding: 1rem; margin-bottom: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+      cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .mission-card:hover { transform: translateY(-4px); box-shadow: 0 8px 16px rgba(0,0,0,0.07); }
+    .mission-card p { margin: 0; font-size: 0.9rem; }
+    .modal { display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+    .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: var(--radius); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
+    .close-button { color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .modal-body p { margin-bottom: 0.5rem; }
+    #modal-actions { display: grid; gap: 0.5rem; margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="logo" href="index.html">
+        <img src="logo.png" alt="PediloYa logo" onerror="this.style.display='none'">
+        <span>Centro de Misiones</span>
+      </a>
+      <a href="login-repartidor.html" class="btn btn--outline" style="margin-left: auto;">Salir</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="dashboard" class="dashboard-grid">
+      <div class="mission-column" id="col-nuevos"><h2>🔔 Misiones Disponibles</h2></div>
+      <div class="mission-column" id="col-proceso"><h2>🛵 Mis Misiones en Proceso</h2></div>
+      <div class="mission-column" id="col-finalizados"><h2>✅ Misiones Finalizadas</h2></div>
+    </div>
+  </main>
+
+  <div id="missionModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle" style="margin: 0;">Detalles de la Misión</h2>
+        <span class="close-button" onclick="closeModal()">&times;</span>
+      </div>
+      <div id="modalBody" class="modal-body" style="padding-top: 1.5rem;"></div>
+    </div>
+  </div>
+
+  <footer class="site-footer">&copy; PediloYa</footer>
+
+  <script src="lib.js"></script>
+  <script>
+    if (sessionStorage.getItem('repartidorToken') !== 'true') {
+      window.location.href = 'login-repartidor.html';
+    }
+
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Z-ixBkV_0Eh7sLDL8clpcsnKttk3PRixP-wrsNO0yNOoaOvLVj1UnZH7xY5caCtn/exec";
+    let allMisiones = [];
+    let knownMissionIds = new Set(); // Para evitar recargar todo si no hay cambios
+
+    const colNuevos = document.getElementById('col-nuevos');
+    const colProceso = document.getElementById('col-proceso');
+    const colFinalizados = document.getElementById('col-finalizados');
+
+    async function loadAllMisiones() {
+      // (Esta función es un poco más inteligente ahora, solo actualiza si hay cambios)
+      try {
+        const response = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'getMisiones' })
+        });
+        const result = await response.json();
+        if (result.status !== 'success') {
+          throw new Error('No se pudieron cargar las misiones.');
+        }
+        
+        // Comprobar si hay cambios reales antes de redibujar todo
+        const newMissionIds = new Set(result.misiones.map(m => m.ID_Pedido + m.Estado));
+        if (newMissionIds.size === knownMissionIds.size && [...newMissionIds].every(id => knownMissionIds.has(id))) {
+          // No hay cambios, no hacer nada
+          return;
+        }
+
+        allMisiones = result.misiones;
+        knownMissionIds = newMissionIds; // Actualizar el set de misiones conocidas
+        renderDashboard();
+
+      } catch (error) {
+        console.error(error);
+        // No mostramos un error en toda la pantalla, solo fallamos silenciosamente
+        // para que el próximo intervalo lo intente de nuevo.
+      }
+    }
+
+    function renderDashboard() {
+        colNuevos.innerHTML = '<h2>🔔 Misiones Disponibles</h2>';
+        colProceso.innerHTML = '<h2>🛵 Mis Misiones en Proceso</h2>';
+        colFinalizados.innerHTML = '<h2>✅ Misiones Finalizadas</h2>';
+        
+        let hasNuevos = false, hasProceso = false, hasFinalizados = false;
+
+        allMisiones.forEach(mision => {
+            const card = createMissionCard(mision);
+            
+            if (mision.NegocioID === 'MANDADO' && mision.Estado === 'Pendiente') {
+                colNuevos.appendChild(card);
+                hasNuevos = true;
+            } else if (
+                (mision.NegocioID === 'MANDADO' && mision.Estado === 'En Proceso') ||
+                (mision.NegocioID !== 'MANDADO' && mision.Estado === 'Listo para Retirar') ||
+                (mision.NegocioID !== 'MANDADO' && mision.Estado === 'En Proceso')
+            ) {
+                colProceso.appendChild(card);
+                hasProceso = true;
+            } else { 
+                colFinalizados.appendChild(card);
+                hasFinalizados = true;
+            }
+        });
+        
+        // Añadir mensajes si las columnas están vacías
+        if (!hasNuevos) colNuevos.innerHTML += '<p style="color: var(--muted); font-size: 0.9rem;">No hay misiones nuevas.</p>';
+        if (!hasProceso) colProceso.innerHTML += '<p style="color: var(--muted); font-size: 0.9rem;">No tienes misiones en proceso.</p>';
+        if (!hasFinalizados) colFinalizados.innerHTML += '<p style="color: var(--muted); font-size: 0.9rem;">Aún no has finalizado misiones.</p>';
+    }
+    
+    function createMissionCard(mision) {
+        const card = document.createElement('div');
+        card.className = 'mission-card';
+        card.setAttribute('onclick', `openModal('${mision.ID_Pedido}')`);
+        
+        const tipoMision = mision.NegocioID === 'MANDADO' ? 'Mandado' : 'Pedido de Negocio';
+        const titulo = mision.NegocioID === 'MANDADO' ? mision.Cliente : mision.NombreNegocio;
+
+        card.innerHTML = `
+            <p><strong>${tipoMision} #${mision.ID_Pedido}</strong></p>
+            <p>${titulo}</p>
+            <p style="color: var(--muted); font-size: 0.8rem;">${new Date(mision.Fecha).toLocaleString()}</p>
+        `;
+        return card;
+    }
+
+    const modal = document.getElementById('missionModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+
+    // EN panel-repartidor.html
+    // EN panel-repartidor.html
+    function openModal(orderId) {
+        const mision = allMisiones.find(m => m.ID_Pedido == orderId); 
+    
+        if (!mision) {
+          console.error("No se encontró la misión con ID:", orderId);
+          return;
+        }
+
+        modalTitle.textContent = `Detalles de la Misión #${orderId}`;
+    
+        let actionsHtml = '';
+        let detailsHtml = '';
+
+        if (mision.NegocioID === 'MANDADO') {
+            detailsHtml = `
+                <h3>Detalles del Cliente</h3>
+                <p><strong>Nombre:</strong> ${mision.Cliente}</p>
+                <p><strong>Celular:</strong> <a href="tel:${mision.Celular}">${mision.Celular}</a></p>
+                <p><strong>Método de Pago:</strong> ${mision.MetodoPago || 'Efectivo (a cotizar)'}</p>
+                <h3>Descripción del Mandado</h3>
+                <p>${mision.Producto}</p>
+                ${mision.Lugar ? `<p><strong>Origen:</strong> ${mision.Lugar}</p>` : ''}
+                <p><strong>Destino:</strong> ${mision.Direccion}</p>`;
+        
+            if (mision.Estado === 'Pendiente') {
+                actionsHtml = `<button class="btn" onclick="updateStatus('${orderId}', 'En Proceso')">Confirmar y Aceptar Misión</button>`;
+            } else if (mision.Estado === 'En Proceso') {
+                actionsHtml = `<button class="btn" style="background-color: #28a745;" onclick="updateStatus('${orderId}', 'Entregado')">Marcar como Finalizado</button>`;
+            }
+        } else {
+            // --- ¡BLOQUE MODIFICADO! ---
+            detailsHtml = `
+                <h3>Detalles de Entrega</h3>
+                <p><strong>Cliente:</strong> ${mision.Cliente}</p>
+                <p><strong>Celular:</strong> <a href="tel:${mision.Celular}">${mision.Celular}</a></p>
+                <p><strong>Dirección:</strong> ${mision.Direccion}</p>
+                <hr style="margin: 1rem 0;">
+                <h3>Información del Pedido</h3>
+                <p><strong>Negocio:</strong> ${mision.NombreNegocio}</p>
+                <p><strong>Producto:</strong> ${mision.Cantidad} x ${mision.Producto}</p>
+                <p style="font-size: 1.1rem; font-weight: 600;">Total a Cobrar (${mision.MetodoPago || 'Efectivo'}): C$ ${Number(mision.Total).toFixed(2)}</p>`;
+
+            if (mision.Estado === 'Listo para Retirar' || mision.Estado === 'En Proceso') {
+                 actionsHtml = `<button class="btn" style="background-color: #28a745;" onclick="updateStatus('${orderId}', 'Entregado')">Marcar como Entregado</button>`;
+            }
+        }
+
+        modalBody.innerHTML = `${detailsHtml}<div id="modal-actions" style="margin-top: 1.5rem;">${actionsHtml}</div>`;
+        modal.style.display = 'block';
+    }
+
+    function closeModal() {
+        modal.style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            closeModal();
+        }
+    }
+
+    async function updateStatus(orderId, newStatus) {
+      const buttons = document.querySelectorAll('#modal-actions button');
+      buttons.forEach(btn => {
+          btn.disabled = true;
+          btn.textContent = 'Actualizando...';
+      });
+      
+      try {
+        await fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'updateStatus', orderId: orderId, newStatus: newStatus })
+        });
+        closeModal();
+        loadAllMisiones(); // Recargamos el tablero inmediatamente después de una acción
+      } catch (error) {
+        alert('Ocurrió un error al actualizar el estado. Intenta de nuevo.');
+        buttons.forEach(btn => {
+            btn.disabled = false;
+        });
+      }
+    }
+
+    // --- ¡AQUÍ ESTÁ LA LÍNEA AÑADIDA! ---
+    // Esto hará que la función loadAllMisiones se ejecute cada 15 segundos.
+    setInterval(loadAllMisiones, 5000);
+
+    // Cargar las misiones la primera vez que se abre la página
+    loadAllMisiones();
+  </script>
+</body>
+</html>

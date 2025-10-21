@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seguimiento de Mandado - PediloYa</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+  <script src="auth.js"></script>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .timeline { list-style: none; padding: 1rem 0; }
+    .timeline-item { position: relative; padding-bottom: 2rem; padding-left: 30px; border-left: 2px solid var(--border-color); }
+    .timeline-item:last-child { border-left: 2px solid transparent; }
+    .timeline-icon {
+      position: absolute; left: -11px; top: 5px; width: 20px; height: 20px;
+      border-radius: 50%; background: var(--border-color); 
+    }
+    .timeline-item.active .timeline-icon { 
+      background: var(--primary);
+      box-shadow: 0 0 0 4px var(--card-bg), 0 0 0 7px var(--primary);
+    }
+    .timeline-content h3 { font-size: 1.1rem; font-weight: 600; margin:0; }
+    .timeline-content p { color: var(--muted); font-size: 0.9rem; margin:0; }
+    .status-rechazado { 
+        background-color: #fff0f1; border: 1px solid #dc3545; color: #dc3545;
+        padding: 1.5rem; border-radius: var(--radius); text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="logo" href="index.html">
+        <img src="logo.png" alt="PediloYa logo" onerror="this.style.display='none'">
+      </a>
+    </div>
+  </header>
+
+  <main class="container" style="max-width: 600px;">
+    <h1>Seguimiento de tu Mandado</h1>
+    <p>N&uacute;mero de Solicitud: <strong id="orderId"></strong></p>
+    <div id="status-container" style="margin-top: 2rem;">
+      <p>Cargando estado de la solicitud...</p>
+    </div>
+  </main>
+
+  <footer class="site-footer">&copy; PediloYa</footer>
+  <script src="lib.js"></script>
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Z-ixBkV_0Eh7sLDL8clpcsnKttk3PRixP-wrsNO0yNOoaOvLVj1UnZH7xY5caCtn/exec";
+    const orderId = new URLSearchParams(window.location.search).get('id');
+    document.getElementById('orderId').textContent = orderId || 'No especificado';
+
+    // --- ¡ESTADOS SIMPLIFICADOS Y SINCRONIZADOS! ---
+    const estados = [
+        { key: 'Pendiente', title: 'Solicitud Recibida', desc: 'Hemos recibido tu solicitud. El repartidor te contactará en breve.' },
+        { key: 'En Proceso', title: 'Mandado en Proceso', desc: 'El repartidor ha confirmado contigo y ya está trabajando en tu solicitud.' },
+        { key: 'Entregado', title: 'Mandado Completado', desc: '¡Tu mandado ha sido completado con éxito! Gracias por usar PediloYa.' }
+    ];
+
+    async function fetchOrderStatus() {
+      if (!orderId) {
+          document.getElementById('status-container').innerHTML = '<p>No se ha especificado un n&uacute;mero de solicitud.</p>';
+          return;
+      }
+      try {
+        const response = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'getOrderStatus', orderId: orderId })
+        });
+        const result = await response.json();
+        
+        if (result.status === 'success' && result.order) {
+          renderStatus(result.order.Estado);
+        } else {
+          document.getElementById('status-container').innerHTML = `<p>No pudimos encontrar los detalles de la solicitud #${orderId}.</p>`;
+        }
+      } catch (error) {
+        console.error("Error fetching status:", error);
+      }
+    }
+
+    function renderStatus(currentStatus) {
+      const container = document.getElementById('status-container');
+      
+      if (currentStatus === 'Rechazado') {
+          container.innerHTML = '<div class="status-rechazado"><h2>Solicitud Rechazada</h2><p>Lamentablemente, no pudimos procesar tu solicitud de mandado en este momento.</p></div>';
+          return;
+      }
+      
+      // --- LÓGICA DE RENDERIZADO REPARADA Y SIMPLIFICADA ---
+      const currentIndex = estados.findIndex(s => s.key === currentStatus);
+      
+      let html = '<ul class="timeline">';
+      estados.forEach((estado, index) => {
+        const isActive = index <= currentIndex;
+        html += `
+          <li class="timeline-item ${isActive ? 'active' : ''}">
+            <div class="timeline-icon"></div>
+            <div class="timeline-content">
+              <h3>${estado.title}</h3>
+              ${isActive ? `<p>${estado.desc}</p>` : ''}
+            </div>
+          </li>
+        `;
+      });
+      html += '</ul>';
+      container.innerHTML = html;
+    }
+
+    setInterval(fetchOrderStatus, 15000);
+    fetchOrderStatus();
+  </script>
+</body>
+</html>

@@ -1,0 +1,328 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Cuenta y Pedidos - PediloYa</title>
+  
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="auth.js"></script>
+
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* ... (tus estilos .order-history-item, #logout-btn etc. se mantienen) ... */
+     #logout-btn {
+        background: var(--muted);
+        color: white;
+        margin-left: auto;
+    }
+     .order-history-item {
+      background: var(--card-bg);
+      padding: 1rem;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      text-decoration: none;
+      color: var(--dark);
+      transition: box-shadow .2s ease;
+    }
+    .order-history-item:hover {
+        box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+    }
+    .order-history-item div p { margin: 0; }
+    .status-tag {
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: white;
+      text-transform: capitalize;
+    }
+    .status-pendiente { background-color: #ffc107; }
+    .status-aceptado, .status-en-proceso, .status-listo-para-retirar { background-color: #007bff; }
+    .status-entregado { background-color: #28a745; }
+    .status-rechazado { background-color: #dc3545; }
+
+    /* Estilo para el contenedor del reCAPTCHA visible */
+    #recaptcha-container div { /* Centrar el checkbox */
+        margin: 1rem auto 0;
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="logo" href="index.html">
+        <img src="logo.png" alt="PediloYa logo" onerror="this.style.display='none'">
+      </a>
+    </div>
+  </header>
+
+  <main class="container" style="max-width: 600px;">
+    
+    <div id="login-container" style="display:none;">
+      <h1>Inicia Sesión o Regístrate</h1>
+      <p>Verifica tu número de celular para acceder a tu historial de pedidos y guardar tus datos.</p>
+      
+      <div class="input-control">
+        <label for="celular">Tu Número de Celular (Ej: 88997766)</label>
+        <div class="row" style="gap: 0.5rem;">
+            <span style="padding: 0.8rem; background: #F5F5F5; border-radius: 8px; font-weight: 600;">+505</span>
+            <input id="celular" name="celular" type="tel" placeholder="88997766" required style="flex: 1;" />
+        </div>
+      </div>
+
+      <div id="recaptcha-container"></div>
+      
+      <button id="send-otp-btn" type="button" class="btn" style="width: 100%; padding: 0.9rem; margin-top: 1rem;" disabled>Verificar y Enviar SMS</button>
+      <p id="send-otp-error" style="color:#b94a48; margin-top: 1rem; display: none;"></p>
+      
+      <div id="otp-container" style="display:none; margin-top: 1.5rem;">
+          <div class="input-control">
+            <label for="otp-code">Código de 6 dígitos enviado a tu celular</label>
+            <input id="otp-code" type="tel" placeholder="123456" required />
+          </div>
+          <button id="confirm-otp-btn" type="button" class="btn" style="width: 100%; padding: 0.9rem;">Verificar e Iniciar Sesión</button>
+          <p id="confirm-otp-error" style="color:#b94a48; margin-top: 1rem; display: none;"></p>
+      </div>
+    </div>
+
+    <div id="account-container" style="display:none;">
+      <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h1>Mis Pedidos</h1>
+        <button id="logout-btn" class="btn btn--outline">Cerrar Sesión</button>
+      </div>
+      <p id="welcome-message" style="font-size: 1.1rem;">Cargando...</p>
+      <div id="ordersList" style="margin-top: 2rem;"></div>
+    </div>
+    
+  </main>
+
+  <footer class="site-footer">© PediloYa</footer>
+  <script src="lib.js"></script>
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Z-ixBkV_0Eh7sLDL8clpcsnKttk3PRixP-wrsNOyNOoaOvLVj1UnZH7xY5caCtn/exec";
+    
+    // Contenedores y Elementos
+    const loginContainer = document.getElementById('login-container');
+    const accountContainer = document.getElementById('account-container');
+    const ordersList = document.getElementById('ordersList');
+    const welcomeMessage = document.getElementById('welcome-message');
+    let appVerifier = null; 
+    let confirmationResult;
+    const celularInput = document.getElementById('celular');
+    const sendOtpBtn = document.getElementById('send-otp-btn');
+    const otpContainer = document.getElementById('otp-container');
+    const confirmOtpBtn = document.getElementById('confirm-otp-btn');
+    const sendOtpError = document.getElementById('send-otp-error');
+    const confirmOtpError = document.getElementById('confirm-otp-error');
+    const recaptchaContainer = document.getElementById('recaptcha-container'); 
+    
+    // --- LÓGICA PRINCIPAL AL CARGAR PÁGINA ---
+    (async () => {
+      const user = await getCurrentUser(); 
+
+      if (user) {
+        // --- CASO 1: USUARIO LOGUEADO ---
+        loginContainer.style.display = 'none';
+        accountContainer.style.display = 'block';
+        const userPhone = user.phoneNumber.replace('+505', '');
+        welcomeMessage.textContent = `Historial de: ${userPhone}`;
+        await loadOrders(userPhone);
+      } else {
+        // --- CASO 2: USUARIO NO LOGUEADO ---
+        loginContainer.style.display = 'block';
+        accountContainer.style.display = 'none';
+        
+        // --- ¡MODIFICACIÓN PARA reCAPTCHA VISIBLE! ---
+        try {
+          recaptchaContainer.innerHTML = ''; // Limpiar
+          
+          appVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+            'size': 'normal', // <-- ¡CAMBIO IMPORTANTE! Usar 'normal' para el checkbox
+            'callback': (response) => {
+              // reCAPTCHA resuelto POR EL USUARIO (hizo clic en el checkbox)
+              console.log("reCAPTCHA VISIBLE resuelto por el usuario.");
+              sendOtpBtn.disabled = false; // <-- Habilitar el botón de enviar SMS
+              sendOtpError.style.display = 'none'; // Ocultar errores previos
+            },
+            'expired-callback': () => {
+              // El token expiró (si esperó mucho después de hacer clic)
+              console.warn("reCAPTCHA VISIBLE expiró.");
+              sendOtpError.textContent = "La verificación reCAPTCHA expiró. Por favor, marca la casilla de nuevo.";
+              sendOtpError.style.display = 'block';
+              sendOtpBtn.disabled = true; // <-- Deshabilitar botón
+              // Firebase suele manejar el reset del checkbox visible automáticamente
+            }
+          });
+
+          // Renderizar el widget visible. Firebase lo hará aparecer.
+          appVerifier.render().then((widgetId) => {
+            console.log("reCAPTCHA VISIBLE renderizado OK.");
+          }).catch(renderError => {
+             console.error("Error al renderizar reCAPTCHA VISIBLE:", renderError);
+             sendOtpError.textContent = `Error al mostrar reCAPTCHA: ${renderError.message}`;
+             sendOtpError.style.display = 'block';
+          });
+          
+        } catch (e) { 
+            console.error("Error crítico inicializando reCAPTCHA VISIBLE:", e); 
+            sendOtpError.textContent = `Error crítico al iniciar reCAPTCHA: ${e.message}`;
+            sendOtpError.style.display = 'block';
+        }
+        // --- FIN DE LA MODIFICACIÓN ---
+      }
+    })();
+
+    // --- LÓGICA DE LOGIN ---
+    sendOtpBtn.addEventListener('click', async () => {
+      // El botón solo está habilitado si el reCAPTCHA se resolvió
+      const phoneNumber = celularInput.value.trim();
+      if (phoneNumber.length < 8) {
+        sendOtpError.textContent = 'Por favor, introduce un número de 8 dígitos.';
+        return sendOtpError.style.display = 'block';
+      }
+      const fullPhoneNumber = `+505${phoneNumber}`;
+      
+      // Deshabilitar botón y limpiar errores mientras se envía
+      sendOtpBtn.disabled = true;
+      sendOtpBtn.textContent = 'Enviando SMS...';
+      sendOtpError.style.display = 'none'; // Ocultar errores previos
+
+      // Asegurarse de que appVerifier esté listo
+      if (!appVerifier) {
+          sendOtpError.textContent = 'Error: El verificador reCAPTCHA no está listo. Recarga la página.';
+          sendOtpError.style.display = 'block';
+          // No re-habilitar el botón aquí, forzar recarga
+          console.error("Intento de enviar SMS pero appVerifier es null.");
+          return; 
+      }
+
+      try {
+        console.log("Llamando a signInWithPhoneNumber con reCAPTCHA visible...");
+        // El appVerifier ya contiene la respuesta del reCAPTCHA resuelto
+        confirmationResult = await auth.signInWithPhoneNumber(fullPhoneNumber, appVerifier);
+        console.log("Llamada exitosa, esperando código OTP.");
+        
+        // Ocultar partes del form de login y mostrar OTP
+        celularInput.disabled = true; 
+        recaptchaContainer.style.display = 'none'; // Ocultar el checkbox reCAPTCHA
+        sendOtpBtn.style.display = 'none'; // Ocultar el botón de enviar
+        otpContainer.style.display = 'block';
+        document.getElementById('otp-code').focus(); 
+
+      } catch (error) {
+        console.error("Error en signInWithPhoneNumber:", error); 
+        sendOtpError.textContent = `Error al enviar SMS: ${error.message}. Intenta de nuevo.`;
+        sendOtpError.style.display = 'block';
+        
+        // ¡Importante! Resetear el estado para permitir nuevo intento
+        sendOtpBtn.disabled = true; // Mantener deshabilitado hasta nuevo reCAPTCHA
+        sendOtpBtn.textContent = 'Verificar y Enviar SMS'; // Restaurar texto
+        
+        // Resetear el widget reCAPTCHA para obtener un token nuevo
+        try {
+            if (appVerifier && typeof appVerifier.render === 'function') {
+               // El método reset no existe directamente en RecaptchaVerifier V8/V9 compat
+               // La mejor forma es limpiar y volver a renderizar si es necesario o dejar que expired-callback lo maneje
+               // Por ahora, solo informamos y dejamos el botón deshabilitado
+               console.log("Error al enviar SMS, reCAPTCHA podría necesitar ser marcado de nuevo.");
+            }
+        } catch (resetError) {
+             console.error("Error al intentar resetear reCAPTCHA:", resetError);
+        }
+      }
+    });
+
+    // --- Lógica de Confirmar Código OTP (Sin cambios necesarios) ---
+    confirmOtpBtn.addEventListener('click', async () => {
+      const code = document.getElementById('otp-code').value.trim();
+      if (code.length < 6) {
+        confirmOtpError.textContent = 'El código debe tener 6 dígitos.';
+        return confirmOtpError.style.display = 'block';
+      }
+      confirmOtpBtn.disabled = true;
+      confirmOtpBtn.textContent = 'Verificando...';
+      confirmOtpError.style.display = 'none'; 
+
+      try {
+        await confirmationResult.confirm(code);
+        window.location.reload(); 
+      } catch (error) {
+        console.error("Error en confirmationResult.confirm():", error);
+        confirmOtpError.textContent = 'Código incorrecto o expirado. Intenta de nuevo.';
+        confirmOtpError.style.display = 'block';
+        confirmOtpBtn.disabled = false;
+        confirmOtpBtn.textContent = 'Verificar e Iniciar Sesión';
+        // Podríamos resetear el flujo aquí si falla mucho
+      }
+    });
+
+    // --- LÓGICA DE CERRAR SESIÓN (Sin cambios) ---
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+       // ... (código igual) ...
+        try {
+            await logOut();
+            window.location.reload();
+        } catch (error) {
+            console.error("Error al cerrar sesión:", error);
+            alert("Hubo un problema al cerrar sesión.");
+        }
+    });
+
+    // --- LÓGICA DE CARGAR PEDIDOS (Sin cambios) ---
+    async function loadOrders(phone) {
+       // ... (código igual) ...
+        if (!phone) return;
+        ordersList.innerHTML = '<p>Buscando tus pedidos...</p>';
+        try {
+            const response = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'getOrdersByPhone', phone: phone })
+            });
+            const result = await response.json();
+            if (result.status === 'success' && result.orders.length > 0) {
+                renderOrders(result.orders);
+            } else {
+                ordersList.innerHTML = '<p>No encontramos pedidos asociados a tu número.</p>';
+            }
+        } catch (error) {
+            console.error("Error cargando pedidos:", error);
+            ordersList.innerHTML = '<p>Ocurrió un error al buscar tus pedidos.</p>';
+        }
+    }
+
+    function renderOrders(orders) {
+      // ... (código igual) ...
+        let html = '';
+        orders.forEach(order => {
+            const statusClass = `status-${(order.Estado || '').toLowerCase().replace(/\s+/g, '-')}`;
+            let linkHref = '';
+            let orderTitle = '';
+            if (order.NegocioID === 'MANDADO') {
+                linkHref = `seguimiento-mandado.html?id=${order.ID_Pedido}`;
+                orderTitle = `Servicio de Mandado - ${new Date(order.Fecha).toLocaleDateString()}`;
+            } else {
+                linkHref = `seguimiento.html?id=${order.ID_Pedido}`;
+                orderTitle = `${order.NombreNegocio} - ${new Date(order.Fecha).toLocaleDateString()}`;
+            }
+            html += `
+              <a href="${linkHref}" class="order-history-item">
+                <div>
+                  <p><strong>Orden #${order.ID_Pedido}</strong></p>
+                  <p>${orderTitle}</p>
+                </div>
+                <span class="status-tag ${statusClass}">${order.Estado}</span>
+              </a>
+            `;
+        });
+        ordersList.innerHTML = html;
+    }
+  </script>
+</body>
+</html>

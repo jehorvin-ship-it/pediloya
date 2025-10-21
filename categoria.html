@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PediloYa - Negocios por categoría</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+  <script src="auth.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="logo" href="index.html">
+        <img src="logo.png" alt="PediloYa logo" onerror="this.style.display='none'">
+      </a>
+      <div class="search-wrap">
+        <div class="search">
+          <svg class="icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#9CA3AF" d="M21 21l-4.35-4.35"></path></svg>
+          <input placeholder="Buscar negocio..." aria-label="Buscar negocio">
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <a class="back-link" href="index.html">← Todas las categorías</a>
+    <h1 id="tituloCat">Cargando...</h1>
+    <div id="list"></div>
+  </main>
+
+  <footer class="site-footer">© PediloYa</footer>
+
+  <script src="lib.js"></script>
+  <script>
+    (async () => {
+      try {
+        const cat = decodeURIComponent(qParam('cat') || '');
+        document.getElementById('tituloCat').textContent = cat || 'Negocios';
+        
+        const negocios = await fetchSheetByGid(GID_NEGOCIOS);
+        const activos = negocios.filter(n => (n.Estado || '1') !== '0' && (!cat || (n.Categoria || '') === cat));
+        
+        const list = document.getElementById('list');
+        if (!activos.length) {
+          list.innerHTML = '<p>No hay negocios disponibles para esta categoría.</p>';
+          return;
+        }
+
+        activos.forEach(b => list.appendChild(createBizRow(b)));
+
+        function createBizRow(b){
+          const delivery = b.DeliveryFee && "" !== b.DeliveryFee ? `Delivery: C$ ${Number(b.DeliveryFee).toFixed(2)}` : "Sin delivery";
+          const d = document.createElement("div");
+          d.className = "biz-row";
+          d.innerHTML = `
+            <img src="${b.Imagen||""}" alt="${b.NombreNegocio||"Imagen negocio"}" onerror="this.src='https://via.placeholder.com/300x200?text=Sin'">
+            <div>
+              <h3>${b.NombreNegocio||"—"}</h3>
+              <p>${b.Categoria||""} • ${b.Horario||""}</p>
+              <p>${b.Descripcion||""}</p>
+              <div class="row">
+                <a class="btn" href="negocio.html?id=${encodeURIComponent(b.ID)}">Ver productos</a>
+                <span style="font-weight: 600; margin-left: auto;">${delivery}</span>
+              </div>
+            </div>`;
+          return d;
+        }
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById('list').innerHTML = '<p>Error al cargar los negocios. Por favor, intenta de nuevo.</p>';
+      }
+    })();
+  </script>
+</body>
+</html>

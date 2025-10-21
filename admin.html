@@ -1,0 +1,269 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Negocio - PediloYa</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+  <script src="auth.js"></script>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Estilos específicos para el panel de admin */
+    body { background-color: #F5F5F5; }
+    .container { max-width: 1200px; }
+    
+    /* --- Pestañas de Navegación --- */
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 1.5rem;
+    }
+    .tab-button {
+      padding: 0.75rem 1.25rem;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--muted);
+      border-bottom: 3px solid transparent;
+    }
+    .tab-button.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* --- Tablero de Pedidos --- */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+    .order-column {
+      background-color: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 1rem;
+      border: 1px solid var(--border-color);
+    }
+    .order-column h2 { font-size: 1.1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1rem; margin-top: 0; }
+    .order-card {
+      background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius);
+      padding: 1rem; margin-bottom: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.04); border-left: 5px solid;
+    }
+    .order-card.status-pendiente { border-color: #ffc107; }
+    .order-card.status-aceptado { border-color: #007bff; }
+    .order-card.status-listo-para-retirar { border-color: #28a745; }
+    .order-card.status-entregado { border-color: #6c757d; } /* --- ¡NUEVO ESTILO! --- */
+    .order-card p { margin-bottom: 0.5rem; font-size: 0.9rem; }
+    .order-card .actions { margin-top: 1rem; display: flex; gap: 0.5rem; }
+
+    /* --- Lista de Productos --- */
+    .product-list-item {
+        display: flex; align-items: center; gap: 1rem; background: var(--card-bg);
+        padding: 1rem; border: 1px solid var(--border-color); border-radius: var(--radius); margin-bottom: 1rem;
+    }
+    .product-list-item img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; }
+    .product-list-item .info { flex-grow: 1; }
+    .product-list-item .info h4 { font-size: 1rem; margin: 0; }
+    .product-list-item .info p { font-size: 0.9rem; color: var(--muted); margin: 0; }
+    .product-list-item .actions { display: flex; gap: 0.5rem; }
+
+    /* --- Modal para Añadir/Editar Producto --- */
+    .modal {
+        display: none; position: fixed; z-index: 1001; left: 0; top: 0;
+        width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);
+    }
+    .modal-content {
+        background-color: #fefefe; margin: 10% auto; padding: 20px;
+        border: 1px solid #888; width: 80%; max-width: 500px; border-radius: var(--radius);
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
+    .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .close-button:hover, .close-button:focus { color: var(--dark); }
+    
+    /* --- NUEVOS ESTILOS PARA EL BOTÓN DE SUBIDA --- */
+    .upload-btn {
+        background: #F5F5F5; border: 1px dashed #ccc; border-radius: 8px;
+        padding: 0.8rem; text-align: center; cursor: pointer;
+        color: var(--muted); font-weight: 500;
+    }
+    .upload-btn:hover { background: #eee; }
+    #imagePreview { max-width: 100px; max-height: 100px; border-radius: 8px; margin-top: 0.5rem; display: none; }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="logo" href="index.html">
+        <img src="logo.png" alt="PediloYa logo" onerror="this.style.display='none'">
+        
+      </a>
+      <h4></h4>
+      <h4 id="businessName" style="margin-left: auto; font-size: 1.1rem; font-weight: 500;"></h4>
+      <a href="login.html" class="btn btn--outline">Salir</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <nav class="tabs">
+        <button class="tab-button active" onclick="openTab('pedidos')">Pedidos</button>
+        <button class="tab-button" onclick="openTab('productos')">Mis Productos</button>
+    </nav>
+
+    <div id="pedidos" class="tab-content active">
+        <div class="dashboard-grid">
+            <div class="order-column" id="col-nuevos"><h2>🔔 Pedidos Nuevos</h2></div>
+            <div class="order-column" id="col-preparacion"><h2>👨‍🍳 En Preparación</h2></div>
+            <div class="order-column" id="col-listos"><h2>🛵 Listos para Retirar</h2></div>
+            <div class="order-column" id="col-entregados"><h2>✅ Pedidos Entregados</h2></div>
+        </div>
+    </div>
+
+    <div id="productos" class="tab-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2>Mi Menú de Productos</h2>
+            <button class="btn" onclick="openProductModal()">+ Añadir Producto</button>
+        </div>
+        <div id="product-list"></div>
+    </div>
+  </main>
+  
+  <div id="productModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle" style="margin: 0;">Añadir Producto</h2>
+        <span class="close-button" onclick="closeProductModal()">&times;</span>
+      </div>
+      <form id="productForm" style="margin-top: 1.5rem;">
+        <input type="hidden" id="productId">
+        <div class="input-control">
+          <label for="productName">Nombre del Producto</label>
+          <input type="text" id="productName" required>
+        </div>
+        <div class="input-control">
+          <label for="productDesc">Descripción</label>
+          <textarea id="productDesc" rows="3"></textarea>
+        </div>
+        <div class="input-control">
+          <label for="productPrice">Precio (C$)</label>
+          <input type="number" id="productPrice" step="0.01" required>
+        </div>
+        
+        <div class="input-control">
+            <label>Imagen del Producto</label>
+            <div id="upload-box" class="upload-btn" onclick="document.getElementById('imageUploadInput').click()">
+                <span>📸 Toca para subir una foto</span>
+            </div>
+            <input type="file" id="imageUploadInput" accept="image/*" style="display: none;">
+            <img id="imagePreview" src="" alt="Vista previa">
+            <input type="hidden" id="productImage">
+        </div>
+        <div class="row" style="gap: 1rem; justify-content: flex-end;">
+            <button type="button" class="btn btn--outline" onclick="closeProductModal()">Cancelar</button>
+            <button type="submit" class="btn">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <audio id="notification-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" preload="auto"></audio>
+
+  <script src="lib.js"></script>
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Z-ixBkV_0Eh7sLDL8clpcsnKttk3PRixP-wrsNO0yNOoaOvLVj1UnZH7xY5caCtn/exec";
+    const IMGBB_API_KEY = "0f9ffd220705f2b8f3deb5b78150bebf"; // 👈 ¡TU CLAVE API YA ESTÁ INTEGRADA!
+    const businessId = new URLSearchParams(window.location.search).get('id');
+    let knownOrderIds = new Set();
+    let allProducts = [];
+
+    // --- LÓGICA DE PESTAÑAS ---
+    function openTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(tabName).classList.add('active');
+      document.querySelector(`.tab-button[onclick="openTab('${tabName}')"]`).classList.add('active');
+      if(tabName === 'productos') fetchAndRenderProducts();
+    }
+
+    // --- LÓGICA PARA PEDIDOS (ACTUALIZADA) ---
+    const colNuevos = document.getElementById('col-nuevos');
+    const colPreparacion = document.getElementById('col-preparacion');
+    const colListos = document.getElementById('col-listos');
+    const colEntregados = document.getElementById('col-entregados'); // --- ¡NUEVA VARIABLE! ---
+    async function fetchAndRenderOrders(){if(!businessId)return void(document.querySelector(".dashboard-grid").innerHTML="<h1>Error: ID de negocio no especificado en la URL.</h1>");try{const e=await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"getOrders",businessId:businessId})}),t=await e.json();if("success"===t.status){colNuevos.innerHTML="<h2>🔔 Pedidos Nuevos</h2>",colPreparacion.innerHTML="<h2>👨‍🍳 En Preparación</h2>",colListos.innerHTML="<h2>🛵 Listos para Retirar</h2>",colEntregados.innerHTML="<h2>✅ Pedidos Entregados</h2>";let e=!1;t.orders.forEach((t=>{!knownOrderIds.has(t.ID_Pedido)&&"Pendiente"===t.Estado&&(e=!0),knownOrderIds.add(t.ID_Pedido),createOrderCard(t)})),e&&document.getElementById("notification-sound").play()}}catch(e){console.error("Error fetching orders:",e)}}
+    // EN admin.html
+    function createOrderCard(e){const t=document.createElement("div");let o="";t.className="order-card";
+    "Pendiente"===e.Estado?(t.classList.add("status-pendiente"),o=`<div class="actions"><button class="btn" onclick="updateStatus('${e.ID_Pedido}', 'Aceptado')">Aceptar</button><button class="btn btn--outline" onclick="updateStatus('${e.ID_Pedido}', 'Rechazado')">Rechazar</button></div>`):"Aceptado"===e.Estado?(t.classList.add("status-aceptado"),o=`<div class="actions"><button class="btn" onclick="updateStatus('${e.ID_Pedido}', 'Listo para Retirar')">Pedido Listo</button></div>`):"Listo para Retirar"===e.Estado?(t.classList.add("status-listo-para-retirar"),o="<p><strong>Operador notificado. Esperando repartidor...</strong></p>"):"Entregado"===e.Estado&&(t.classList.add("status-entregado"),o="<p><strong>Misión completada por el repartidor.</strong></p>");
+  
+    // --- ¡LÍNEA MODIFICADA! Se añadió e.MetodoPago ---
+    t.innerHTML=`<p><strong>Orden #${e.ID_Pedido}</strong></p><p><strong>Cliente:</strong> ${e.Cliente}</p><p><strong>Producto:</strong> ${e.Cantidad} x ${e.Producto}</p><p><strong>Total:</strong> C$ ${Number(e.Total).toFixed(2)}</p><p style="font-weight: 600;">Pago: ${e.MetodoPago || 'Efectivo'}</p>${o}`;
+  
+    "Pendiente"===e.Estado?colNuevos.appendChild(t):"Aceptado"===e.Estado?colPreparacion.appendChild(t):"Listo para Retirar"===e.Estado?colListos.appendChild(t):"Entregado"===e.Estado&&colEntregados.appendChild(t);
+    }
+    async function updateStatus(e,t){document.querySelectorAll(`button[onclick*="${e}"]`).forEach((e=>e.disabled=!0)),await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"updateStatus",orderId:e,newStatus:t})}),fetchAndRenderOrders()}
+
+    // --- LÓGICA PARA GESTIÓN DE PRODUCTOS ---
+    const productListContainer = document.getElementById('product-list');
+    async function fetchAndRenderProducts(){productListContainer.innerHTML="<p>Cargando productos...</p>";try{const e=await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"getProductsByBusiness",businessId:businessId})}),t=await e.json();if("success"===t.status){if(allProducts=t.products,productListContainer.innerHTML="",0===allProducts.length)productListContainer.innerHTML="<p>Aún no has añadido ningún producto.</p>";else allProducts.forEach((e=>productListContainer.appendChild(createProductListItem(e))))}else throw new Error(t.message)}catch(e){productListContainer.innerHTML="<p>Error al cargar los productos.</p>"}}
+    function createProductListItem(e){const t=document.createElement("div");return t.className="product-list-item",t.innerHTML=`<img src="${e.Imagen||"https://via.placeholder.com/60"}" alt="${e.Nombre}"><div class="info"><h4>${e.Nombre}</h4><p>C$ ${Number(e.Precio).toFixed(2)}</p></div><div class="actions"><button class="btn btn--outline" onclick="openProductModal('${e.ID}')">Editar</button><button class="btn" style="background-color:#888" onclick="deleteProduct('${e.ID}')">Eliminar</button></div>`,t}
+    
+    // --- LÓGICA DEL MODAL ---
+    const modal=document.getElementById("productModal"),modalTitle=document.getElementById("modalTitle"),productForm=document.getElementById("productForm"),productIdInput=document.getElementById("productId"),productNameInput=document.getElementById("productName"),productDescInput=document.getElementById("productDesc"),productPriceInput=document.getElementById("productPrice"),productImageInput=document.getElementById("productImage"),imagePreview=document.getElementById("imagePreview"),uploadBox=document.getElementById("upload-box");
+    function openProductModal(e=null){productForm.reset(),imagePreview.style.display="none",uploadBox.innerHTML="<span>📸 Toca para subir una foto</span>",e?(modalTitle.textContent="Editar Producto",(e=allProducts.find((t=>t.ID===e)))&&(productIdInput.value=e.ID,productNameInput.value=e.Nombre,productDescInput.value=e.Descripcion,productPriceInput.value=e.Precio,productImageInput.value=e.Imagen,e.Imagen&&(imagePreview.src=e.Imagen,imagePreview.style.display="block"))):(modalTitle.textContent="Añadir Nuevo Producto",productIdInput.value=""),modal.style.display="block"}
+    function closeProductModal(){modal.style.display="none"}
+    productForm.addEventListener("submit",(async e=>{e.preventDefault();const t={ID:productIdInput.value,Nombre:productNameInput.value,Descripcion:productDescInput.value,Precio:productPriceInput.value,Imagen:productImageInput.value,BusinessID:businessId},o=t.ID?"editProduct":"addProduct";try{const e=await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({action:o,payload:t})});if("success"!==(await e.json()).status)throw new Error(result.message);closeProductModal(),fetchAndRenderProducts()}catch(e){alert("Error al guardar el producto.")}}));
+    async function deleteProduct(e){if(!confirm("¿Estás seguro de que quieres eliminar este producto? Esta acción no se puede deshacer."))return;try{const t=await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"deleteProduct",payload:{ID:e}})});if("success"!==(await t.json()).status)throw new Error(result.message);fetchAndRenderProducts()}catch(e){alert("Error al eliminar el producto.")}}
+    
+    // --- ¡NUEVA LÓGICA PARA SUBIR IMÁGENES! ---
+    const imageUploadInput = document.getElementById('imageUploadInput');
+    imageUploadInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        if (!IMGBB_API_KEY || IMGBB_API_KEY === "PEGA_AQUÍ_TU_CLAVE_API_DE_IMGBB") {
+            alert("Error: La clave API de ImgBB no ha sido configurada.");
+            return;
+        }
+
+        uploadBox.innerHTML = '<span>Subiendo imagen... ⏳</span>';
+        const formData = new FormData();
+        formData.append('image', file);
+
+        try {
+            const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+                const imageUrl = result.data.url; // Usamos la URL directa
+                productImageInput.value = imageUrl;
+                imagePreview.src = imageUrl;
+                imagePreview.style.display = 'block';
+                uploadBox.innerHTML = '<span>¡Imagen subida con éxito! ✅</span>';
+            } else {
+                throw new Error(result.error.message);
+            }
+        } catch (error) {
+            console.error("Error al subir la imagen:", error);
+            uploadBox.innerHTML = '<span>❌ Error al subir. Intenta de nuevo.</span>';
+        }
+    });
+
+    // --- CÓDIGO DE INICIALIZACIÓN ---
+    (async () => {
+        const negocios = await fetchSheetByGid(GID_NEGOCIOS);
+        const negocio = negocios.find(n => n.ID === businessId);
+        if(negocio) document.getElementById('businessName').textContent = negocio.NombreNegocio;
+    })();
+    setInterval(fetchAndRenderOrders, 15000);
+    fetchAndRenderOrders();
+  </script>
+</body>
+</html>
