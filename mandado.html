@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8"/>
@@ -7,7 +7,8 @@
   
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="auth.js"></script> <link rel="stylesheet" href="styles.css">
+  <script src="auth.js"></script> 
+  <link rel="stylesheet" href="styles.css">
   
   <style>
     .payment-method {
@@ -27,6 +28,12 @@
     .payment-method .icon { font-size: 2rem; }
     .payment-method .info p { margin: 0; font-weight: 600; }
     .payment-method .info span { margin: 0; font-size: 0.9rem; color: var(--muted); }
+     /* Estilo añadido para centrar reCAPTCHA invisible */
+    #recaptcha-container {
+      display: flex;
+      justify-content: center; /* Centrar horizontalmente */
+      margin-top: 1rem;
+    }
   </style>
 </head>
 <body>
@@ -49,22 +56,21 @@
         <div class="input-control">
           <label for="celular">Tu Número de Celular (Ej: 88997766)</label>
           <div class="row" style="gap: 0.5rem;">
-              <span style="padding: 0.8rem; ...">+505</span>
-              <input id="celular" name="celular" type="tel" placeholder="88997766" required ... />
+              <span style="padding: 0.8rem; background: #F5F5F5; border-radius: 8px; font-weight: 600;">+505</span>
+              <input id="celular" name="celular" type="tel" placeholder="88997766" required style="flex: 1;" />
           </div>
         </div>
-        <button id="send-otp-btn" type="button" class="btn" ...>Enviar código SMS</button>
-        <p id="send-otp-error" ...></p>
-        <div id="recaptcha-container" ...></div>
-    </div>
+        <button id="send-otp-btn" type="button" class="btn" style="width: 100%; padding: 0.9rem;">Enviar código SMS</button>
+        <p id="send-otp-error" style="color:#b94a48; margin-top: 1rem; display: none;"></p>
+        <div id="recaptcha-container"></div> </div>
 
-    <div id="otp-container" style="display:none; ...">
+    <div id="otp-container" style="display:none; margin-top: 1.5rem;">
         <div class="input-control">
           <label for="otp-code">Código de 6 dígitos</label>
           <input id="otp-code" type="tel" placeholder="123456" required />
         </div>
-        <button id="confirm-otp-btn" type="button" class="btn" ...>Verificar y Continuar</button>
-        <p id="confirm-otp-error" ...></p>
+        <button id="confirm-otp-btn" type="button" class="btn" style="width: 100%; padding: 0.9rem;">Verificar y Continuar</button>
+        <p id="confirm-otp-error" style="color:#b94a48; margin-top: 1rem; display: none;"></p>
     </div>
 
     <form id="mandadoForm" autocomplete="off" style="display:none;">
@@ -72,15 +78,15 @@
 
       <div class="input-control">
         <label for="descripcion">¿Qué necesitas que hagamos?</label>
-        <textarea id="descripcion" ... required></textarea>
+        <textarea id="descripcion" placeholder="Ej: Ir a pagar el recibo de la luz a ENATREL..." required></textarea>
       </div>
       <div class="input-control">
         <label for="origen">Dirección de Origen (si aplica)</label>
-        <input id="origen" type="text" ...>
+        <input id="origen" type="text" placeholder="Ej: Recoger un paquete en la terminal de buses">
       </div>
       <div class="input-control">
         <label for="destino">Dirección de Entrega</label>
-        <input id="destino" type="text" ... required>
+        <input id="destino" type="text" placeholder="Tu dirección para entregarte el mandado" required>
       </div>
 
       <h2 style="font-size: 1.2rem; margin-top: 2rem;">Tus Datos de Contacto</h2>
@@ -98,7 +104,7 @@
         </div>
       </div>
 
-      <button id="solicitarBtn" type="submit" class="btn" ...>Enviar Solicitud</button>
+      <button id="solicitarBtn" type="submit" class="btn" style="width: 100%; padding: 0.9rem; margin-top: 2rem;">Enviar Solicitud</button>
     </form>
 
     <div id="notification" style="display:none;margin-top:1.5rem; text-align: center;"></div>
@@ -108,15 +114,15 @@
 
   <script src="lib.js"></script>
   <script>
-    // --- ¡YA NO NECESITAMOS LA CONFIGURACIÓN DE FIREBASE AQUÍ! ---
-    // Está en auth.js
-
-    // --- Variables Globales ---
-    let appVerifier;
+    // Variables Globales
+    let appVerifier = null; // Cambiado a null
     let confirmationResult;
-    let authenticatedUserPhone = null; // ¡NUEVA!
+    let authenticatedUserPhone = null; 
+    // --- ¡Variables para el temporizador de bloqueo! ---
+    let blockTimerInterval = null;
+    let blockSecondsRemaining = 60; 
 
-    // --- Selectores del DOM ---
+    // Selectores del DOM
     const mandadoForm = document.getElementById('mandadoForm');
     const verificationContainer = document.getElementById('verification-container');
     const otpContainer = document.getElementById('otp-container');
@@ -126,103 +132,175 @@
     const sendOtpError = document.getElementById('send-otp-error');
     const confirmOtpError = document.getElementById('confirm-otp-error');
     const notificationDiv = document.getElementById('notification');
+    const recaptchaContainer = document.getElementById('recaptcha-container'); // Selector añadido
 
-    // --- ¡LÓGICA DE CARGA DE PÁGINA (MUY MODIFICADA)! ---
+    // --- LÓGICA DE CARGA DE PÁGINA ---
     (async () => {
-      // 1. Verificamos si el usuario ya está logueado
-      const user = await getCurrentUser(); // De auth.js
+      const user = await getCurrentUser(); 
 
       if (user) {
-        // --- CASO 1: USUARIO SÍ ESTÁ LOGUEADO ---
+        // --- CASO 1: USUARIO LOGUEADO ---
         console.log("Usuario ya logueado:", user.phoneNumber);
         authenticatedUserPhone = user.phoneNumber.replace('+505', '');
-        
-        // Ocultamos los formularios de login
         verificationContainer.style.display = 'none';
         otpContainer.style.display = 'none';
-        
-        // Mostramos el formulario final
         mandadoForm.style.display = 'block';
         document.getElementById('mandado-welcome').textContent = `¡Estás solicitando como ${authenticatedUserPhone}!`;
-
       } else {
-        // --- CASO 2: USUARIO NO ESTÁ LOGUEADO ---
+        // --- CASO 2: USUARIO NO LOGUEADO ---
         console.log("Usuario no logueado, mostrando verificación.");
         verificationContainer.style.display = 'block';
         
-        // Preparamos el reCAPTCHA para el login
+        // --- ¡Inicialización reCAPTCHA invisible! ---
         try {
+          recaptchaContainer.innerHTML = ''; 
           appVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-            'size': 'invisible'
+            'size': 'invisible',
+             'callback': (response) => { console.log("reCAPTCHA invisible verificado."); },
+             'expired-callback': () => {
+                console.warn("reCAPTCHA invisible expiró.");
+                sendOtpError.textContent = "La verificación expiró. Intenta enviar el SMS de nuevo.";
+                sendOtpError.style.display = 'block';
+                sendOtpBtn.disabled = false;
+                sendOtpBtn.textContent = 'Enviar código SMS';
+                if (appVerifier) { appVerifier.clear(); appVerifier = null; console.log("appVerifier limpiado."); }
+             }
           });
-        } catch (e) { console.error("Error inicializando reCAPTCHA", e); }
+          await appVerifier.render().catch(renderError => {
+             console.error("Error al renderizar reCAPTCHA invisible:", renderError);
+             sendOtpError.textContent = `Error al mostrar reCAPTCHA: ${renderError.message}`;
+             sendOtpError.style.display = 'block';
+          });
+          console.log("reCAPTCHA invisible renderizado OK.");
+        } catch (e) { 
+            console.error("Error crítico inicializando reCAPTCHA invisible:", e); 
+            sendOtpError.textContent = `Error crítico al iniciar reCAPTCHA: ${e.message}`;
+            sendOtpError.style.display = 'block';
+        }
+        // --- FIN Inicialización reCAPTCHA ---
       }
     })();
 
-    // --- Lógica de Verificación (¡MODIFICADA!) ---
-    // (Ahora esta lógica es para INICIAR SESIÓN)
-
-    // PASO 1: Enviar SMS
+    // --- ¡LÓGICA DE VERIFICACIÓN CON MANEJO DE BLOQUEO! ---
     sendOtpBtn.addEventListener('click', async () => {
-      // (Esta función es idéntica a la de mis-pedidos.html)
-      const phoneNumber = celularInput.value.trim();
-      if (phoneNumber.length < 8) {
-        sendOtpError.textContent = 'Por favor, introduce un número de 8 dígitos.';
-        return sendOtpError.style.display = 'block';
-      }
-      const fullPhoneNumber = `+505${phoneNumber}`;
-      sendOtpBtn.disabled = true;
-      sendOtpBtn.textContent = 'Enviando SMS...';
-      sendOtpError.style.display = 'none';
-      try {
-        confirmationResult = await auth.signInWithPhoneNumber(fullPhoneNumber, appVerifier);
-        verificationContainer.style.display = 'none';
-        otpContainer.style.display = 'block';
-        document.getElementById('otp-code').focus();
-      } catch (error) {
-        console.error("Error al enviar SMS:", error);
-        sendOtpError.textContent = `Error: ${error.message}. Revisa el número.`;
-        sendOtpError.style.display = 'block';
-        sendOtpBtn.disabled = false;
-        sendOtpBtn.textContent = 'Enviar código SMS';
-      }
+        // Si ya hay un temporizador activo, mostrar mensaje y salir
+        if (blockTimerInterval) {
+            sendOtpError.innerHTML = `⏳ Aún debes esperar <strong>${blockSecondsRemaining}</strong> segundos.`;
+            sendOtpError.style.display = 'block';
+            return;
+        }
+
+        const phoneNumber = celularInput.value.trim();
+        if (phoneNumber.length < 8) {
+            sendOtpError.textContent = 'Por favor, introduce un número de 8 dígitos.';
+            return sendOtpError.style.display = 'block';
+        }
+        const fullPhoneNumber = `+505${phoneNumber}`;
+        
+        // Deshabilitar botón y limpiar errores
+        sendOtpBtn.disabled = true;
+        sendOtpBtn.textContent = 'Enviando SMS...';
+        sendOtpError.style.display = 'none';
+
+        if (!appVerifier) {
+            sendOtpError.textContent = 'Error: El verificador reCAPTCHA no está listo. Recarga la página e intenta de nuevo.';
+            sendOtpError.style.display = 'block';
+            sendOtpBtn.disabled = false; 
+            sendOtpBtn.textContent = 'Enviar código SMS';
+            console.error("Intento de enviar SMS pero appVerifier es null.");
+            return; 
+        }
+
+        try {
+            console.log("Llamando a signInWithPhoneNumber...");
+            confirmationResult = await auth.signInWithPhoneNumber(fullPhoneNumber, appVerifier);
+            console.log("Llamada exitosa, esperando código OTP.");
+            
+            // Ocultar verificación y mostrar OTP
+            verificationContainer.style.display = 'none'; 
+            otpContainer.style.display = 'block';
+            document.getElementById('otp-code').focus(); 
+
+        } catch (error) {
+            console.error("Error en signInWithPhoneNumber:", error); 
+            
+            // --- ¡MANEJO CREATIVO DEL ERROR 'too-many-requests'! ---
+            if (error.code === 'auth/too-many-requests') {
+                blockSecondsRemaining = 60; 
+                sendOtpError.innerHTML = `⏳ ¡Ups! Demasiados intentos. Por seguridad, espera un momento.<br>Podrás intentarlo de nuevo en <strong>${blockSecondsRemaining}</strong> segundos.`;
+                sendOtpError.style.display = 'block';
+                sendOtpBtn.textContent = 'Espera...'; 
+                sendOtpBtn.disabled = true; 
+                
+                blockTimerInterval = setInterval(() => {
+                    blockSecondsRemaining--;
+                    const strongTag = sendOtpError.querySelector('strong');
+                    if (strongTag) strongTag.textContent = blockSecondsRemaining;
+                    
+                    if (blockSecondsRemaining <= 0) {
+                        clearInterval(blockTimerInterval); 
+                        blockTimerInterval = null; 
+                        sendOtpBtn.disabled = false; 
+                        sendOtpBtn.textContent = 'Enviar código SMS'; 
+                        sendOtpError.style.display = 'none'; 
+                        console.log("Temporizador de bloqueo finalizado.");
+                        if (appVerifier) {
+                            appVerifier.render().catch(e => console.error("Error re-render reCAPTCHA post-bloqueo:", e));
+                        }
+                    }
+                }, 1000); 
+                
+            } else {
+                // Mostrar otros errores de forma normal
+                sendOtpError.textContent = `Error al enviar SMS: ${error.message}. Intenta de nuevo.`;
+                sendOtpError.style.display = 'block';
+                sendOtpBtn.disabled = false; 
+                sendOtpBtn.textContent = 'Enviar código SMS';
+                if (appVerifier) {
+                    appVerifier.render().catch(e => console.error("Error re-render reCAPTCHA post-error:", e));
+                }
+            }
+            // --- FIN DEL MANEJO CREATIVO ---
+        }
     });
 
-    // PASO 2: Confirmar Código (¡MODIFICADO!)
+
+    // --- Lógica de Confirmar Código OTP ---
     confirmOtpBtn.addEventListener('click', async () => {
-      const code = document.getElementById('otp-code').value.trim();
-      if (code.length < 6) {
-        confirmOtpError.textContent = 'El código debe tener 6 dígitos.';
-        return confirmOtpError.style.display = 'block';
-      }
-      confirmOtpBtn.disabled = true;
-      confirmOtpBtn.textContent = 'Verificando...';
-      confirmOtpError.style.display = 'none';
+      // (Esta función es idéntica a la de mis-pedidos.html y checkout.html)
+        const code = document.getElementById('otp-code').value.trim();
+        if (code.length < 6) {
+            confirmOtpError.textContent = 'El código debe tener 6 dígitos.';
+            return confirmOtpError.style.display = 'block';
+        }
+        confirmOtpBtn.disabled = true;
+        confirmOtpBtn.textContent = 'Verificando...';
+        confirmOtpError.style.display = 'none';
 
-      try {
-        await confirmationResult.confirm(code);
-        
-        // ¡ÉXITO! Usuario logueado en Firebase
-        confirmOtpBtn.textContent = '¡Verificado!';
-        otpContainer.style.display = 'none';
-        mandadoForm.style.display = 'block';
-        
-        // --- ¡YA NO USAMOS localStorage.setItem! ---
-        // Guardamos el teléfono en nuestra variable global
-        authenticatedUserPhone = celularInput.value.trim();
-        document.getElementById('mandado-welcome').textContent = `¡Estás solicitando como ${authenticatedUserPhone}!`;
+        try {
+            await confirmationResult.confirm(code);
+            
+            // ¡ÉXITO! Usuario logueado en Firebase
+            confirmOtpBtn.textContent = '¡Verificado!';
+            otpContainer.style.display = 'none';
+            mandadoForm.style.display = 'block';
+            
+            // Guardar teléfono en variable global
+            authenticatedUserPhone = celularInput.value.trim();
+            document.getElementById('mandado-welcome').textContent = `¡Estás solicitando como ${authenticatedUserPhone}!`;
 
-      } catch (error) {
-        console.error("Error al verificar código:", error);
-        confirmOtpError.textContent = 'Código incorrecto. Intenta de nuevo.';
-        confirmOtpError.style.display = 'block';
-        confirmOtpBtn.disabled = false;
-        confirmOtpBtn.textContent = 'Verificar Código';
-      }
+        } catch (error) {
+            console.error("Error al verificar código:", error);
+            confirmOtpError.textContent = 'Código incorrecto o expirado. Intenta de nuevo.';
+            confirmOtpError.style.display = 'block';
+            confirmOtpBtn.disabled = false;
+            confirmOtpBtn.textContent = 'Verificar Código';
+        }
     });
 
-    // --- PASO 3: Enviar Mandado (¡MODIFICADO!) ---
+    // --- Lógica de Enviar Mandado ---
     mandadoForm.addEventListener('submit', async (e) => {
+      // (Esta función es idéntica a la versión anterior, ya usaba authenticatedUserPhone)
       e.preventDefault();
       const boton = document.getElementById('solicitarBtn');
       boton.disabled = true;
@@ -232,8 +310,6 @@
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Z-ixBkV_0Eh7sLDL8clpcsnKttk3PRixP-wrsNO0yNOoaOvLVj1UnZH7xY5caCtn/exec";
         const ordenId = `M-${Math.floor(Math.random() * 90000) + 10000}`;
         
-        // --- ¡CAMBIO CLAVE! ---
-        // Usamos el teléfono autenticado en lugar de leer el input
         if (!authenticatedUserPhone) {
             throw new Error("Error de autenticación. No se encontró el número de teléfono.");
         }
@@ -245,7 +321,7 @@
           destino: document.getElementById('destino').value.trim(),
           cliente: {
             nombre: document.getElementById('nombre').value.trim(),
-            celular: authenticatedUserPhone // <-- ¡USAMOS EL NÚMERO AUTENTICADO!
+            celular: authenticatedUserPhone // Usar número autenticado
           },
           metodoPago: 'Efectivo (a cotizar)'
         };
