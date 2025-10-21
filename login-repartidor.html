@@ -29,7 +29,7 @@
         <input id="usuario" type="text" required />
       </div>
       <div class="input-control">
-        <label for="contrasena">ContraseÒa</label>
+        <label for="contrasena">Contrase√±a</label>
         <input id="contrasena" type="password" required />
       </div>
       <button id="loginButton" type="submit" class="btn" style="width: 100%; padding: 0.9rem;">Acceder</button>
@@ -41,7 +41,7 @@
 
   <script src="lib.js"></script>
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Z-ixBkV_0Eh7sLDL8clpcsnKttk3PRixP-wrsNO0yNOoaOvLVj1UnZH7xY5caCtn/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXyXzIAelblfS89-_uD29B4M1ksXzeUajIueaAid-11l6AO68GSNmoU7x3QHTu4xr2/exec";
 
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -68,17 +68,17 @@
           loginButton.textContent = 'Acceso Concedido';
           // Guardamos un "boleto" temporal para dar acceso al panel
           sessionStorage.setItem('repartidorToken', 'true');
-          // --- °LÕNEA CORREGIDA! ---
-          // Ahora redirigimos al panel general, sin un ID de orden especÌfico.
+          // --- ¬°L√çNEA CORREGIDA! ---
+          // Ahora redirigimos al panel general, sin un ID de orden espec√≠fico.
           window.location.href = 'panel-repartidor.html';
         } else {
-          errorMessage.textContent = 'Credenciales incorrectas. IntÈntalo de nuevo.';
+          errorMessage.textContent = 'Credenciales incorrectas. Int√©ntalo de nuevo.';
           errorMessage.style.display = 'block';
           loginButton.disabled = false;
           loginButton.textContent = 'Acceder';
         }
       } catch (error) {
-        errorMessage.textContent = 'Error de conexiÛn. Revisa tu internet.';
+        errorMessage.textContent = 'Error de conexi√≥n. Revisa tu internet.';
         errorMessage.style.display = 'block';
         loginButton.disabled = false;
         loginButton.textContent = 'Acceder';
@@ -86,4 +86,5 @@
     });
   </script>
 </body>
+
 </html>
