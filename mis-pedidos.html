@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -11,7 +11,7 @@
 
   <link rel="stylesheet" href="styles.css">
   <style>
-    /* ... (tus estilos .order-history-item, #logout-btn etc. se mantienen) ... */
+    /* Estilos existentes */
      #logout-btn {
         background: var(--muted);
         color: white;
@@ -24,10 +24,10 @@
       margin-bottom: 1rem;
       border: 1px solid var(--border-color);
       box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-      display: flex;
-      justify-content: space-between;
+      display: flex; /* Mantenemos flex para alinear items */
+      justify-content: space-between; /* Espacio entre contenido y botón/estado */
       align-items: center;
-      text-decoration: none;
+      /* Quitamos text-decoration global aquí */
       color: var(--dark);
       transition: box-shadow .2s ease;
     }
@@ -42,6 +42,7 @@
       font-weight: 600;
       color: white;
       text-transform: capitalize;
+      flex-shrink: 0; /* Evitar que el tag se encoja */
     }
     .status-pendiente { background-color: #ffc107; }
     .status-aceptado, .status-en-proceso, .status-listo-para-retirar { background-color: #007bff; }
@@ -49,8 +50,25 @@
     .status-rechazado { background-color: #dc3545; }
 
     /* Estilo para el contenedor del reCAPTCHA visible */
-    #recaptcha-container div { /* Centrar el checkbox */
+    #recaptcha-container div {
         margin: 1rem auto 0;
+    }
+
+    /* ¡NUEVO! Estilo para el enlace principal dentro del item */
+    .order-link {
+        text-decoration: none; /* Quitar subrayado del enlace */
+        color: inherit; /* Heredar color del texto */
+        display: flex; /* Alinear contenido interno */
+        align-items: center;
+        flex-grow: 1; /* Ocupar espacio disponible */
+        margin-right: 1rem; /* Espacio antes del botón o estado */
+    }
+    /* ¡NUEVO! Estilo específico para el botón calificar */
+    .rate-btn {
+        margin-left: 0.5rem; /* Pequeño espacio a la izquierda */
+        padding: 0.3rem 0.8rem;
+        font-size: 0.8rem;
+        flex-shrink: 0; /* Evitar que el botón se encoja */
     }
   </style>
 </head>
@@ -68,7 +86,6 @@
     <div id="login-container" style="display:none;">
       <h1>Inicia Sesión o Regístrate</h1>
       <p>Verifica tu número de celular para acceder a tu historial de pedidos y guardar tus datos.</p>
-      
       <div class="input-control">
         <label for="celular">Tu Número de Celular (Ej: 88997766)</label>
         <div class="row" style="gap: 0.5rem;">
@@ -76,12 +93,9 @@
             <input id="celular" name="celular" type="tel" placeholder="88997766" required style="flex: 1;" />
         </div>
       </div>
-
       <div id="recaptcha-container"></div>
-      
       <button id="send-otp-btn" type="button" class="btn" style="width: 100%; padding: 0.9rem; margin-top: 1rem;" disabled>Verificar y Enviar SMS</button>
       <p id="send-otp-error" style="color:#b94a48; margin-top: 1rem; display: none;"></p>
-      
       <div id="otp-container" style="display:none; margin-top: 1.5rem;">
           <div class="input-control">
             <label for="otp-code">Código de 6 dígitos enviado a tu celular</label>
@@ -108,7 +122,7 @@
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXyXzIAelblfS89-_uD29B4M1ksXzeUajIueaAid-11l6AO68GSNmoU7x3QHTu4xr2/exec";
     
-    // Contenedores y Elementos
+    // Selectores y Variables (sin cambios)
     const loginContainer = document.getElementById('login-container');
     const accountContainer = document.getElementById('account-container');
     const ordersList = document.getElementById('ordersList');
@@ -122,155 +136,129 @@
     const sendOtpError = document.getElementById('send-otp-error');
     const confirmOtpError = document.getElementById('confirm-otp-error');
     const recaptchaContainer = document.getElementById('recaptcha-container'); 
-
-    // --- ¡Variables para el temporizador de bloqueo! ---
     let blockTimerInterval = null;
-    let blockSecondsRemaining = 60; // 60 segundos de espera inicial
+    let blockSecondsRemaining = 60; 
     
-    // --- LÓGICA PRINCIPAL AL CARGAR PÁGINA ---
+    // --- LÓGICA PRINCIPAL AL CARGAR PÁGINA (sin cambios) ---
     (async () => {
-      const user = await getCurrentUser(); 
-
-      if (user) {
-        // --- CASO 1: USUARIO LOGUEADO ---
-        loginContainer.style.display = 'none';
-        accountContainer.style.display = 'block';
-        const userPhone = user.phoneNumber.replace('+505', '');
-        welcomeMessage.textContent = `Historial de: ${userPhone}`;
-        await loadOrders(userPhone);
-      } else {
-        // --- CASO 2: USUARIO NO LOGUEADO ---
-        loginContainer.style.display = 'block';
-        accountContainer.style.display = 'none';
-        
-        try {
-          recaptchaContainer.innerHTML = ''; 
-          appVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-            'size': 'normal', 
-            'callback': (response) => {
-              console.log("reCAPTCHA VISIBLE resuelto por el usuario.");
-              sendOtpBtn.disabled = false; 
-              sendOtpError.style.display = 'none'; 
-            },
-            'expired-callback': () => {
-              console.warn("reCAPTCHA VISIBLE expiró.");
-              sendOtpError.textContent = "La verificación reCAPTCHA expiró. Por favor, marca la casilla de nuevo.";
-              sendOtpError.style.display = 'block';
-              sendOtpBtn.disabled = true; 
+        // ... (código igual) ...
+          const user = await getCurrentUser();
+          if (user) {
+            loginContainer.style.display = 'none';
+            accountContainer.style.display = 'block';
+            const userPhone = user.phoneNumber.replace('+505', '');
+            welcomeMessage.textContent = `Historial de: ${userPhone}`;
+            await loadOrders(userPhone);
+          } else {
+            loginContainer.style.display = 'block';
+            accountContainer.style.display = 'none';
+            try {
+              recaptchaContainer.innerHTML = '';
+              appVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+                'size': 'normal',
+                'callback': (response) => {
+                  console.log("reCAPTCHA VISIBLE resuelto por el usuario.");
+                  sendOtpBtn.disabled = false;
+                  sendOtpError.style.display = 'none';
+                },
+                'expired-callback': () => {
+                  console.warn("reCAPTCHA VISIBLE expiró.");
+                  sendOtpError.textContent = "La verificación reCAPTCHA expiró. Por favor, marca la casilla de nuevo.";
+                  sendOtpError.style.display = 'block';
+                  sendOtpBtn.disabled = true;
+                }
+              });
+              appVerifier.render().then((widgetId) => {
+                console.log("reCAPTCHA VISIBLE renderizado OK.");
+              }).catch(renderError => {
+                 console.error("Error al renderizar reCAPTCHA VISIBLE:", renderError);
+                 sendOtpError.textContent = `Error al mostrar reCAPTCHA: ${renderError.message}`;
+                 sendOtpError.style.display = 'block';
+              });
+            } catch (e) {
+                console.error("Error crítico inicializando reCAPTCHA VISIBLE:", e);
+                sendOtpError.textContent = `Error crítico al iniciar reCAPTCHA: ${e.message}`;
+                sendOtpError.style.display = 'block';
             }
-          });
-          appVerifier.render().then((widgetId) => {
-            console.log("reCAPTCHA VISIBLE renderizado OK.");
-          }).catch(renderError => {
-             console.error("Error al renderizar reCAPTCHA VISIBLE:", renderError);
-             sendOtpError.textContent = `Error al mostrar reCAPTCHA: ${renderError.message}`;
-             sendOtpError.style.display = 'block';
-          });
-        } catch (e) { 
-            console.error("Error crítico inicializando reCAPTCHA VISIBLE:", e); 
-            sendOtpError.textContent = `Error crítico al iniciar reCAPTCHA: ${e.message}`;
-            sendOtpError.style.display = 'block';
-        }
-      }
+          }
     })();
 
-    // --- ¡LÓGICA DE LOGIN CON MANEJO DE BLOQUEO! ---
+    // --- LÓGICA DE LOGIN CON MANEJO DE BLOQUEO (sin cambios) ---
     sendOtpBtn.addEventListener('click', async () => {
-        // Si ya hay un temporizador activo, mostrar mensaje y salir
+        // ... (código igual) ...
         if (blockTimerInterval) {
             sendOtpError.innerHTML = `⏳ Aún debes esperar <strong>${blockSecondsRemaining}</strong> segundos.`;
             sendOtpError.style.display = 'block';
             return;
         }
-
         const phoneNumber = celularInput.value.trim();
         if (phoneNumber.length < 8) {
             sendOtpError.textContent = 'Por favor, introduce un número de 8 dígitos.';
             return sendOtpError.style.display = 'block';
         }
         const fullPhoneNumber = `+505${phoneNumber}`;
-        
-        // Deshabilitar botón y limpiar errores mientras se envía
         sendOtpBtn.disabled = true;
         sendOtpBtn.textContent = 'Enviando SMS...';
-        sendOtpError.style.display = 'none'; 
-
+        sendOtpError.style.display = 'none';
         if (!appVerifier) {
             sendOtpError.textContent = 'Error: El verificador reCAPTCHA no está listo. Recarga la página.';
             sendOtpError.style.display = 'block';
             console.error("Intento de enviar SMS pero appVerifier es null.");
-            // No reactivar el botón, forzar recarga
-            return; 
+            return;
         }
-
         try {
             console.log("Llamando a signInWithPhoneNumber con reCAPTCHA visible...");
             confirmationResult = await auth.signInWithPhoneNumber(fullPhoneNumber, appVerifier);
             console.log("Llamada exitosa, esperando código OTP.");
-            
-            // Ocultar partes del form de login y mostrar OTP
-            celularInput.disabled = true; 
-            recaptchaContainer.style.display = 'none'; 
-            sendOtpBtn.style.display = 'none'; 
+            celularInput.disabled = true;
+            recaptchaContainer.style.display = 'none';
+            sendOtpBtn.style.display = 'none';
             otpContainer.style.display = 'block';
-            document.getElementById('otp-code').focus(); 
-
+            document.getElementById('otp-code').focus();
         } catch (error) {
-            console.error("Error en signInWithPhoneNumber:", error); 
-            
-            // --- ¡MANEJO CREATIVO DEL ERROR 'too-many-requests'! ---
+            console.error("Error en signInWithPhoneNumber:", error);
             if (error.code === 'auth/too-many-requests') {
-                blockSecondsRemaining = 60; // Resetear contador a 60
+                blockSecondsRemaining = 60;
                 sendOtpError.innerHTML = `⏳ ¡Ups! Demasiados intentos. Por seguridad, espera un momento.<br>Podrás intentarlo de nuevo en <strong>${blockSecondsRemaining}</strong> segundos.`;
                 sendOtpError.style.display = 'block';
-                sendOtpBtn.textContent = 'Espera...'; // Cambiar texto del botón
-                sendOtpBtn.disabled = true; // Asegurarse que esté deshabilitado
-                
-                // Iniciar el temporizador visual
+                sendOtpBtn.textContent = 'Espera...';
+                sendOtpBtn.disabled = true;
                 blockTimerInterval = setInterval(() => {
                     blockSecondsRemaining--;
-                    // Actualizar mensaje (solo segundos si ya está visible)
                     const strongTag = sendOtpError.querySelector('strong');
                     if (strongTag) strongTag.textContent = blockSecondsRemaining;
-                    
                     if (blockSecondsRemaining <= 0) {
-                        clearInterval(blockTimerInterval); 
-                        blockTimerInterval = null; 
-                        sendOtpBtn.disabled = false; // Reactivar el botón
-                        sendOtpBtn.textContent = 'Enviar código SMS'; // Restaurar texto original
-                        sendOtpError.style.display = 'none'; 
+                        clearInterval(blockTimerInterval);
+                        blockTimerInterval = null;
+                        sendOtpBtn.disabled = false;
+                        sendOtpBtn.textContent = 'Enviar código SMS';
+                        sendOtpError.style.display = 'none';
                         console.log("Temporizador de bloqueo finalizado.");
-                        // Resetear reCAPTCHA para el próximo intento
                         try {
                            if (appVerifier && typeof appVerifier.render === 'function') {
                               appVerifier.render().catch(e => console.error("Error re-renderizando reCAPTCHA post-bloqueo:", e));
-                              recaptchaContainer.style.display = 'block'; // Mostrar de nuevo
+                              recaptchaContainer.style.display = 'block';
                            }
                         } catch(e){ console.error("Error intentando resetear reCAPTCHA post-bloqueo:", e);}
                     }
-                }, 1000); // Actualizar cada segundo
-                
+                }, 1000);
             } else {
-                // Mostrar otros errores de forma normal
                 sendOtpError.textContent = `Error al enviar SMS: ${error.message}. Intenta de nuevo.`;
                 sendOtpError.style.display = 'block';
-                sendOtpBtn.disabled = true; // Mantener deshabilitado hasta que reCAPTCHA se resuelva de nuevo
-                sendOtpBtn.textContent = 'Verificar y Enviar SMS'; 
-                 // Resetear reCAPTCHA también para otros errores por si acaso
+                sendOtpBtn.disabled = true;
+                sendOtpBtn.textContent = 'Verificar y Enviar SMS';
                  try {
                      if (appVerifier && typeof appVerifier.render === 'function') {
                         appVerifier.render().catch(e => console.error("Error re-renderizando reCAPTCHA post-error:", e));
                      }
                  } catch(e){ console.error("Error intentando resetear reCAPTCHA post-error:", e);}
             }
-            // --- FIN DEL MANEJO CREATIVO ---
         }
     });
 
-
-    // --- Lógica de Confirmar Código OTP (Sin cambios) ---
+    // --- Lógica de Confirmar Código OTP (sin cambios) ---
     confirmOtpBtn.addEventListener('click', async () => {
-      // ... (código igual) ...
+        // ... (código igual) ...
         const code = document.getElementById('otp-code').value.trim();
         if (code.length < 6) {
             confirmOtpError.textContent = 'El código debe tener 6 dígitos.';
@@ -279,7 +267,6 @@
         confirmOtpBtn.disabled = true;
         confirmOtpBtn.textContent = 'Verificando...';
         confirmOtpError.style.display = 'none';
-
         try {
             await confirmationResult.confirm(code);
             window.location.reload();
@@ -292,7 +279,7 @@
         }
     });
 
-    // --- LÓGICA DE CERRAR SESIÓN (Sin cambios) ---
+    // --- LÓGICA DE CERRAR SESIÓN (sin cambios) ---
     document.getElementById('logout-btn').addEventListener('click', async () => {
        // ... (código igual) ...
         try {
@@ -304,7 +291,7 @@
         }
     });
 
-    // --- LÓGICA DE CARGAR PEDIDOS (Sin cambios) ---
+    // --- LÓGICA DE CARGAR PEDIDOS (sin cambios) ---
     async function loadOrders(phone) {
        // ... (código igual) ...
         if (!phone) return;
@@ -326,33 +313,50 @@
         }
     }
 
+    // --- ¡FUNCIÓN RENDERORDERS ACTUALIZADA! ---
     function renderOrders(orders) {
-      // ... (código igual) ...
-        let html = '';
-        orders.forEach(order => {
-            const statusClass = `status-${(order.Estado || '').toLowerCase().replace(/\s+/g, '-')}`;
-            let linkHref = '';
-            let orderTitle = '';
-            if (order.NegocioID === 'MANDADO') {
-                linkHref = `seguimiento-mandado.html?id=${order.ID_Pedido}`;
-                orderTitle = `Servicio de Mandado - ${new Date(order.Fecha).toLocaleDateString()}`;
-            } else {
-                linkHref = `seguimiento.html?id=${order.ID_Pedido}`;
-                orderTitle = `${order.NombreNegocio} - ${new Date(order.Fecha).toLocaleDateString()}`;
+      let html = ''; // Quitamos el H2 "Tu Historial"
+      orders.forEach(order => {
+        const statusClass = `status-${(order.Estado || '').toLowerCase().replace(/\s+/g, '-')}`;
+        
+        let linkHref = '';
+        let orderTitle = '';
+        let rateButtonHtml = ''; // Variable para el botón de calificar
+
+        if (order.NegocioID === 'MANDADO') {
+            linkHref = `seguimiento-mandado.html?id=${order.ID_Pedido}`;
+            orderTitle = `Servicio de Mandado - ${new Date(order.Fecha).toLocaleDateString()}`;
+            // No mostramos botón de calificar para mandados (por ahora)
+        } else {
+            linkHref = `seguimiento.html?id=${order.ID_Pedido}`;
+            orderTitle = `${order.NombreNegocio} - ${new Date(order.Fecha).toLocaleDateString()}`;
+            
+            // Si el pedido está Entregado, mostramos el botón Calificar
+            if (order.Estado === 'Entregado') {
+                rateButtonHtml = `
+                    <a href="calificar.html?pedidoId=${order.ID_Pedido}&negocioId=${order.NegocioID}" class="btn btn--outline rate-btn">
+                        ⭐ Calificar
+                    </a>
+                `;
             }
-            html += `
-              <a href="${linkHref}" class="order-history-item">
-                <div>
-                  <p><strong>Orden #${order.ID_Pedido}</strong></p>
-                  <p>${orderTitle}</p>
-                </div>
-                <span class="status-tag ${statusClass}">${order.Estado}</span>
-              </a>
-            `;
-        });
-        ordersList.innerHTML = html;
+        }
+        
+        // HTML modificado para incluir el botón y usar la clase .order-link
+        html += `
+          <div class="order-history-item"> 
+            <a href="${linkHref}" class="order-link">
+              <div>
+                <p><strong>Orden #${order.ID_Pedido}</strong></p>
+                <p>${orderTitle}</p>
+              </div>
+              <span class="status-tag ${statusClass}" style="margin-left: auto;">${order.Estado}</span> 
+            </a>
+            ${rateButtonHtml} 
+          </div>
+        `;
+      });
+      ordersList.innerHTML = html || '<p>Aún no tienes pedidos en tu historial.</p>'; 
     }
   </script>
 </body>
 </html>
-
