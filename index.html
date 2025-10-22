@@ -4,12 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>PediloYa - Inicio</title>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-<script src="auth.js"></script>
-<link rel="stylesheet" href="styles.css">
-<script src="lib.js"></script>
+  
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <script src="auth.js"></script>
+  
+  <link rel="stylesheet" href="styles.css">
+  <script src="lib.js"></script> 
 </head>
 <body>
   <header class="site-header">
@@ -66,34 +68,80 @@
 
   <script src="lib.js"></script>
   <script>
+    // Variables globales para guardar los datos cargados
+    let allNegociosActivos = [];
+    let allProductos = [];
+    let ratingsSummary = {}; // Objeto para guardar el resumen de calificaciones
+    let negociosDestacados = [];
+
+    // Selectores del DOM
+    const listContainer = document.getElementById('list');
+    const searchInput = document.getElementById('searchInput');
+    const mainTitle = document.getElementById('main-title');
+    const categoriesContainer = document.getElementById('categories');
+
+    // --- ¡NUEVA FUNCIÓN PARA CALCULAR RESUMEN DESDE FIREBASE DATA! ---
+    function calculateSummaryFromFirebase(firebaseData) {
+        const summary = {};
+        if (!firebaseData) return summary; // Si no hay datos, devolver vacío
+
+        // Iterar sobre cada negocioId en los datos de Firebase
+        for (const negocioId in firebaseData) {
+            const ratingsForNegocio = firebaseData[negocioId];
+            let totalScore = 0;
+            let voteCount = 0;
+
+            // Iterar sobre cada calificación (por pedidoId) para este negocio
+            for (const pedidoKey in ratingsForNegocio) {
+                const ratingEntry = ratingsForNegocio[pedidoKey];
+                if (ratingEntry && typeof ratingEntry.rating === 'number') {
+                    totalScore += ratingEntry.rating;
+                    voteCount++;
+                }
+            }
+
+            // Calcular promedio si hay votos
+            if (voteCount > 0) {
+                const avg = totalScore / voteCount;
+                summary[negocioId] = {
+                    promedio: parseFloat(avg.toFixed(1)), // Redondear a 1 decimal
+                    votos: voteCount
+                };
+            }
+        }
+        return summary;
+    }
+
+    // --- ¡NUEVA FUNCIÓN PARA RENDERIZAR LA LISTA DE NEGOCIOS! ---
+    // Recibe la lista de negocios a mostrar y el resumen de calificaciones
+    function renderBusinessList(businessesToShow, currentSummary) {
+        listContainer.innerHTML = ''; // Limpiar lista actual
+        if (!businessesToShow || businessesToShow.length === 0) {
+            listContainer.innerHTML = '<p>No se encontraron negocios.</p>';
+            return;
+        }
+        businessesToShow.forEach(b => {
+            // Pasamos el resumen actual al crear cada fila
+            listContainer.appendChild(createBizRow(b, currentSummary));
+        });
+    }
+
+
+    // --- FUNCIÓN PRINCIPAL ASÍNCRONA ---
     (async () => {
       try {
-        // --- LÓGICA DE CARGA ROBUSTA ---
-        // 1. Cargamos primero los negocios, que es lo más importante.
+        // 1. Cargar Negocios (solo una vez al inicio)
         const negocios = await fetchSheetByGid(GID_NEGOCIOS);
-        const activos = negocios.filter(n => (n.Estado || '1') !== '0');
-        
-        // 2. Cargamos las calificaciones por separado para que no rompa la app si falla.
-        let summary = {}; // Empezamos con un resumen vacío
-        try {
-          const ratingsResponse = await fetch(SCRIPT_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'getRatingsSummary' })
-          });
-          const ratingsResult = await ratingsResponse.json();
-          if (ratingsResult.status === 'success') {
-            summary = ratingsResult.summary || {};
-          }
-        } catch (ratingError) {
-          console.error("No se pudieron cargar las calificaciones:", ratingError);
-          // La app continúa sin calificaciones, pero no se rompe.
-        }
+        allNegociosActivos = negocios.filter(n => (n.Estado || '1') !== '0');
+        negociosDestacados = allNegociosActivos.filter(b => b.Destacado === '1');
 
-        // Lógica de Categorías
-        const cats = Array.from(new Set(activos.map(n => n.Categoria || 'Sin categoría')));
-        const catWrap = document.getElementById('categories');
-        const catImages = {
-            'Restaurante': 'https://i.ibb.co/HL6tzqm9/Restarurante.png', 'Mercado': 'https://i.ibb.co/8DpZxH5h/mercado.png', 'Hogar y Servicios': 'https://i.ibb.co/G3B0gqM6/Hogar-y-Servicios.jpg', 'Farmacias': 'https://i.ibb.co/4ZzhsHk0/Farmacia.png', 'Tiendas': 'https://i.ibb.co/vxmKM3zK/tienda.png', 'Mandados': 'https://i.ibb.co/8L1BT9yL/Mandado.png',
+        // 2. Cargar Productos (solo una vez al inicio) - Necesario para búsqueda
+        allProductos = await fetchSheetByGid(GID_PRODUCTOS);
+
+        // 3. Renderizar Categorías (solo una vez al inicio)
+        const cats = Array.from(new Set(allNegociosActivos.map(n => n.Categoria || 'Sin categoría')));
+        const catImages = { /* ... tus imágenes ... */ 
+             'Restaurante': 'https://i.ibb.co/HL6tzqm9/Restarurante.png', 'Mercado': 'https://i.ibb.co/8DpZxH5h/mercado.png', 'Hogar y Servicios': 'https://i.ibb.co/G3B0gqM6/Hogar-y-Servicios.jpg', 'Farmacias': 'https://i.ibb.co/4ZzhsHk0/Farmacia.png', 'Tiendas': 'https://i.ibb.co/vxmKM3zK/tienda.png', 'Mandados': 'https://i.ibb.co/8L1BT9yL/Mandado.png',
         };
         cats.forEach(c => {
           const defaultImg = 'https://i.ibb.co/dKkmdT3/default-cat.png';
@@ -102,128 +150,143 @@
           if (c === 'Mandados') { a.href = 'mandado.html'; } 
           else { a.href = `categoria.html?cat=${encodeURIComponent(c)}`; }
           a.innerHTML = `<img src="${catImages[c] || defaultImg}" alt="${c}"><span>${c}</span>`;
-          catWrap.appendChild(a);
+          categoriesContainer.appendChild(a);
         });
 
-        // Lógica de Negocios Destacados
-        const destacados = activos.filter(b => b.Destacado === '1');
-        const list = document.getElementById('list');
-        if (!destacados.length) { 
-          list.innerHTML = '<p>No hay negocios destacados en este momento.</p>'; 
-        } else {
-          // Pasamos el resumen de calificaciones al crear las tarjetas
-          destacados.forEach(b => list.appendChild(createBizRow(b, summary)));
-        }
-        
-        // Lógica de Búsqueda Inteligente
-        const input = document.getElementById('searchInput');
-        const mainTitle = document.getElementById('main-title');
-        input.addEventListener('input', async (e) => {
-          const q = (e.target.value || '').toLowerCase().trim();
-          if (!q) {
-            mainTitle.textContent = 'Negocios destacados';
-            list.innerHTML = '';
-            if (!destacados.length) { list.innerHTML = '<p>No hay negocios destacados.</p>'; }
-            else { destacados.forEach(b => list.appendChild(createBizRow(b, summary))); }
-            return;
-          }
-          mainTitle.textContent = `Resultados para "${q}"`;
-          list.innerHTML = '<p>Buscando...</p>';
-          const productos = await fetchSheetByGid(GID_PRODUCTOS);
-          const matchingProducts = productos.filter(p => ((p.Nombre || '').toLowerCase().includes(q)) || ((p.Descripcion || '').toLowerCase().includes(q)));
-          const matchingBusinesses = activos.filter(b => (b.NombreNegocio || '').toLowerCase().includes(q));
-          list.innerHTML = '';
-          if (matchingProducts.length > 0) {
-            list.innerHTML += '<h3>Productos Encontrados</h3>';
-            matchingProducts.forEach(p => {
-              const negocioDelProducto = activos.find(b => b.ID === p.BusinessID);
-              if (negocioDelProducto) { list.appendChild(createProductResultRow(p, negocioDelProducto)); }
-            });
-          }
-          if (matchingBusinesses.length > 0) {
-            list.innerHTML += '<h3 style="margin-top: 1.5rem;">Negocios Encontrados</h3>';
-            matchingBusinesses.forEach(b => { list.appendChild(createBizRow(b, summary)); });
-          }
-          if (matchingProducts.length === 0 && matchingBusinesses.length === 0) {
-            list.innerHTML = '<p>No se encontraron resultados para tu búsqueda.</p>';
-          }
+        // 4. --- ¡NUEVO! ESCUCHAR CALIFICACIONES DE FIREBASE EN TIEMPO REAL ---
+        const ratingsRef = db.ref('calificaciones'); // Apuntar a la raíz de calificaciones
+        ratingsRef.on('value', (snapshot) => {
+            console.log("Datos de calificaciones recibidos/actualizados desde Firebase.");
+            const firebaseData = snapshot.val(); // Obtener todos los datos de calificaciones
+            ratingsSummary = calculateSummaryFromFirebase(firebaseData); // Calcular el nuevo resumen
+            
+            // VOLVER A RENDERIZAR la lista actual (destacados o resultados de búsqueda)
+            // con el nuevo resumen de calificaciones.
+            const currentSearchTerm = searchInput.value.toLowerCase().trim();
+            if (currentSearchTerm) {
+                // Si hay búsqueda activa, renderizar resultados de búsqueda
+                performSearch(currentSearchTerm); // Reutilizar la lógica de búsqueda
+            } else {
+                // Si no hay búsqueda, renderizar destacados
+                mainTitle.textContent = 'Negocios destacados';
+                renderBusinessList(negociosDestacados, ratingsSummary);
+            }
+
+        }, (error) => {
+            console.error("Error al escuchar calificaciones de Firebase:", error);
+            // Si falla, al menos mostrar los negocios sin calificación
+            renderBusinessList(negociosDestacados, {}); 
+        });
+        // --- FIN DEL OYENTE DE FIREBASE ---
+
+
+        // --- LÓGICA DE BÚSQUEDA (MODIFICADA para usar datos ya cargados) ---
+        searchInput.addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase().trim();
+            performSearch(q); // Llamar a la función de búsqueda
         });
 
-        function createProductResultRow(product, business) {
-          const precio = (product.PrecioOferta && product.PrecioOferta !== '') ? Number(product.PrecioOferta) : Number(product.Precio || 0);
-          const d = document.createElement('div');
-          d.className = 'biz-row';
-          d.innerHTML = `
-            <img src="${product.Imagen || ''}" alt="${product.Nombre || 'Producto'}" onerror="this.src='https://via.placeholder.com/300x200?text=Sin'">
-            <div>
-              <h3>${product.Nombre || '—'}</h3>
-              <p>Vendido por: <strong>${business.NombreNegocio || '—'}</strong></p>
-              <p style="font-size: 1.1rem; font-weight: 600; color: var(--dark);">C$ ${precio.toFixed(2)}</p>
-              <div class="row" style="margin-top: 0.5rem;"><a class="btn" href="negocio.html?id=${encodeURIComponent(business.ID)}">Ir a la tienda</a></div>
-            </div>`;
-          return d;
+        function performSearch(q) {
+            if (!q) {
+                mainTitle.textContent = 'Negocios destacados';
+                renderBusinessList(negociosDestacados, ratingsSummary); // Renderizar destacados
+                return;
+            }
+
+            mainTitle.textContent = `Resultados para "${q}"`;
+            listContainer.innerHTML = ''; // Limpiar antes de mostrar resultados
+
+            // Filtrar productos (usando allProductos ya cargado)
+            const matchingProducts = allProductos.filter(p => 
+                ((p.Nombre || '').toLowerCase().includes(q)) || 
+                ((p.Descripcion || '').toLowerCase().includes(q))
+            );
+            
+            // Filtrar negocios (usando allNegociosActivos ya cargado)
+            const matchingBusinesses = allNegociosActivos.filter(b => 
+                (b.NombreNegocio || '').toLowerCase().includes(q)
+            );
+
+            let resultsFound = false; // Flag para saber si hubo resultados
+
+            if (matchingProducts.length > 0) {
+                listContainer.innerHTML += '<h3>Productos Encontrados</h3>';
+                matchingProducts.forEach(p => {
+                    const negocioDelProducto = allNegociosActivos.find(b => b.ID === p.BusinessID);
+                    if (negocioDelProducto) { 
+                        listContainer.appendChild(createProductResultRow(p, negocioDelProducto)); 
+                        resultsFound = true;
+                    }
+                });
+            }
+
+            if (matchingBusinesses.length > 0) {
+                listContainer.innerHTML += '<h3 style="margin-top: 1.5rem;">Negocios Encontrados</h3>';
+                // ¡Importante! Renderizar negocios encontrados usando renderBusinessList
+                renderBusinessList(matchingBusinesses, ratingsSummary); 
+                resultsFound = true;
+            }
+
+            if (!resultsFound) {
+                listContainer.innerHTML = '<p>No se encontraron resultados para tu búsqueda.</p>';
+            }
         }
-
-        // --- ¡FUNCIÓN MODIFICADA PARA MOSTRAR CALIFICACIONES! ---
-        // EN index.html -> DENTRO DEL <script>
-
-        // --- ¡FUNCIÓN MODIFICADA PARA MOSTRAR CALIFICACIONES! ---
-        function createBizRow(b, ratingsSummary){
-          const delivery = b.DeliveryFee && "" !== b.DeliveryFee ? `Delivery: C$ ${Number(b.DeliveryFee).toFixed(2)}` : "Sin delivery";
-          
-          // --- LÓGICA AÑADIDA PARA CALIFICACIONES ---
-          let ratingHtml = ''; // Empezamos con HTML vacío
-          const ratingData = ratingsSummary[b.ID]; // Buscamos la calificación para ESTE negocio
-        
-          if (ratingData && ratingData.votos > 0) { // Si hay datos y al menos un voto
-            ratingHtml = `
-              <div class="rating-display">
-                <span class="star-icon">⭐</span>
-                <span class="rating-score">${ratingData.promedio.toFixed(1)}</span> 
-                <span class="rating-votes">(${ratingData.votos} ${ratingData.votos === 1 ? 'voto' : 'votos'})</span>
-              </div>
-            `;
-          } else {
-              // Opcional: Mostrar algo si no hay calificaciones aún
-              // ratingHtml = '<p class="no-rating">Aún sin calificar</p>'; 
-          }
-          // --- FIN DE LÓGICA AÑADIDA ---
-        
-          const d = document.createElement("div");
-          d.className = "biz-row";
-          
-          // --- PLANTILLA HTML ACTUALIZADA ---
-          // Se inserta ${ratingHtml} justo debajo del nombre del negocio (<h3>)
-          d.innerHTML = `
-            <img src="${b.Imagen||""}" alt="${b.NombreNegocio||"Imagen negocio"}" onerror="this.src='https://via.placeholder.com/300x200?text=Sin'">
-            <div>
-              <h3>${b.NombreNegocio||"—"}</h3>
-              ${ratingHtml} 
-              <p>${b.Categoria||""} • ${b.Horario||""}</p>
-              <p>${b.Descripcion||""}</p>
-              <div class="row">
-                <a class="btn" href="negocio.html?id=${encodeURIComponent(b.ID)}">Ver productos</a>
-                <span style="font-weight: 600; margin-left: auto;">${delivery}</span>
-              </div>
-            </div>`;
-          // --- FIN PLANTILLA ACTUALIZADA ---
-          
-          return d;
-        }
-
-// El resto de tu script en index.html (la carga inicial, la lógica de búsqueda, etc.)
-// permanece exactamente igual. Asegúrate de que la llamada a createBizRow
-// siga pasando el argumento 'summary':
-// destacados.forEach(b => list.appendChild(createBizRow(b, summary)));
-// matchingBusinesses.forEach(b => { list.appendChild(createBizRow(b, summary)); });
+        // --- FIN LÓGICA DE BÚSQUEDA ---
 
       } catch (err) {
-        console.error(err);
-        document.getElementById('list').innerHTML = '<p>Error cargando datos. Reintente.</p>';
+        console.error("Error en la carga inicial:", err);
+        document.getElementById('list').innerHTML = '<p>Error cargando datos iniciales. Reintente.</p>';
       }
     })();
+
+    // --- Función createProductResultRow (sin cambios) ---
+    function createProductResultRow(product, business) {
+      const precio = (product.PrecioOferta && product.PrecioOferta !== '') ? Number(product.PrecioOferta) : Number(product.Precio || 0);
+      const d = document.createElement('div');
+      d.className = 'biz-row';
+      d.innerHTML = `
+        <img src="${product.Imagen || ''}" alt="${product.Nombre || 'Producto'}" onerror="this.src='https://via.placeholder.com/300x200?text=Sin'">
+        <div>
+          <h3>${product.Nombre || '—'}</h3>
+          <p>Vendido por: <strong>${business.NombreNegocio || '—'}</strong></p>
+          <p style="font-size: 1.1rem; font-weight: 600; color: var(--dark);">C$ ${precio.toFixed(2)}</p>
+          <div class="row" style="margin-top: 0.5rem;"><a class="btn" href="negocio.html?id=${encodeURIComponent(business.ID)}">Ir a la tienda</a></div>
+        </div>`;
+      return d;
+    }
+
+    // --- Función createBizRow (SIN CAMBIOS, ya estaba lista) ---
+    function createBizRow(b, currentSummary){ // Renombrado argumento para claridad
+      const delivery = b.DeliveryFee && "" !== b.DeliveryFee ? `Delivery: C$ ${Number(b.DeliveryFee).toFixed(2)}` : "Sin delivery";
+      let ratingHtml = '';
+      const ratingData = currentSummary[b.ID]; // Usar el resumen actual
+
+      if (ratingData && ratingData.votos > 0) {
+        ratingHtml = `
+          <div class="rating-display">
+            <span class="star-icon">⭐</span>
+            <span class="rating-score">${ratingData.promedio.toFixed(1)}</span> 
+            <span class="rating-votes">(${ratingData.votos} ${ratingData.votos === 1 ? 'voto' : 'votos'})</span>
+          </div>
+        `;
+      } 
+      
+      const d = document.createElement("div");
+      d.className = "biz-row";
+      d.innerHTML = `
+        <img src="${b.Imagen||""}" alt="${b.NombreNegocio||"Imagen negocio"}" onerror="this.src='https://via.placeholder.com/300x200?text=Sin'">
+        <div>
+          <h3>${b.NombreNegocio||"—"}</h3>
+          ${ratingHtml} 
+          <p>${b.Categoria||""} • ${b.Horario||""}</p>
+          <p>${b.Descripcion||""}</p>
+          <div class="row">
+            <a class="btn" href="negocio.html?id=${encodeURIComponent(b.ID)}">Ver productos</a>
+            <span style="font-weight: 600; margin-left: auto;">${delivery}</span>
+          </div>
+        </div>`;
+      return d;
+    }
   </script>
 </body>
 </html>
-
-
