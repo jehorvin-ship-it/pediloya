@@ -292,4 +292,40 @@ form { margin: 1.5rem 0; }
   font-size: 0.9rem;
   border-top: 1px solid var(--border-color);
   margin-top: 2rem;
+
 }
+/* EN styles.css (Añadir al final o en sección relevante) */
+
+/* --- ESTILOS PARA MOSTRAR CALIFICACIONES --- */
+.rating-display {
+  display: flex; /* Alinear elementos horizontalmente */
+  align-items: center; /* Centrar verticalmente */
+  gap: 0.25rem; /* Espacio pequeño entre estrella, número y votos */
+  margin-bottom: 0.25rem; /* Pequeño espacio debajo de la calificación */
+}
+
+.rating-display .star-icon {
+  font-size: 0.95rem; /* Tamaño de la estrella */
+  color: #ffc107; /* Color amarillo estrella */
+  line-height: 1; /* Ayuda a alinearla mejor */
+}
+
+.rating-display .rating-score {
+  font-weight: 600; /* Puntuación en negrita */
+  font-size: 0.9rem;
+  color: var(--dark); /* Color oscuro principal */
+}
+
+.rating-display .rating-votes {
+  font-size: 0.85rem;
+  color: var(--muted); /* Color gris secundario */
+}
+
+/* Opcional: Estilo si no hay calificaciones */
+.no-rating {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 0.25rem;
+    font-style: italic;
+}
+/* --- FIN DE ESTILOS PARA CALIFICACIONES --- */
