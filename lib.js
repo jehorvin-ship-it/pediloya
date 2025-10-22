@@ -4,7 +4,7 @@
 
 // --- ¡GIDs de las Hojas de Cálculo! ---
 const GID_NEGOCIOS = '0'; // Asegúrate de que este sea el GID correcto para 'Negocios'
-const GID_PRODUCTOS = '1171518345'; // Asegúrate de que este sea el GID correcto para 'Productos'
+const GID_PRODUCTOS = '1322681414'; // Asegúrate de que este sea el GID correcto para 'Productos'
 const GID_PEDIDOS = '1660428263'; // <-- ¡LÍNEA AÑADIDA! GID para 'Pedidos'
 // Añade aquí GIDs para otras hojas si las necesitas (ej: GID_CALIFICACIONES)
 
@@ -106,3 +106,4 @@ function csvToJson(csvText) {
 
 // Puedes añadir más funciones útiles aquí si las necesitas en varias páginas
 // Por ejemplo, formateo de fechas, validaciones, etc.
+
