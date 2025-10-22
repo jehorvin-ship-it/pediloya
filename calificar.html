@@ -10,41 +10,44 @@
   <script src="auth.js"></script>
 
   <link rel="stylesheet" href="styles.css">
-  <style>
-    /* Estilos específicos para las estrellas */
-    .rating-stars {
-      display: flex;
-      justify-content: center;
-      gap: 0.8rem; /* Aumentamos un poco el espacio */
-      font-size: 3.5rem; /* ¡Estrellas mucho más grandes! */
-      margin: 1.5rem 0; /* Ajustamos margen vertical */
-    }
-    .star-button {
-      background: none;
-      border: none;
-      color: #ccc; 
-      cursor: pointer;
-      padding: 0;
-      transition: color 0.2s ease;
-      line-height: 1; /* Para alinear mejor las estrellas grandes */
-    }
-    .star-button:hover,
-    .star-button.selected {
-      color: #ffc107; 
-    }
+<style>
+  /* Estilos específicos para las estrellas */
+  .rating-stars {
+    display: flex;
+    justify-content: center;
+    gap: 1rem; /* Aumentamos el espacio entre estrellas para mayor claridad */
+    font-size: 4.5rem; /* ¡Hacemos las estrellas MUCHO más grandes! */
+    margin: 1.5rem 0; /* Ajustamos margen vertical */
+    height: 4.5rem; /* Aseguramos que el contenedor tenga la altura de las estrellas */
+    align-items: center; /* Centrar verticalmente las estrellas */
+  }
+  .star-button {
+    background: none;
+    border: none;
+    color: #ccc; 
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s ease;
+    line-height: 1; /* Esto es crucial para que el "★" grande no se recorte y se centre bien */
+    outline: none; /* Eliminar el contorno al hacer focus, si no te gusta */
+  }
+  .star-button:hover,
+  .star-button.selected {
+    color: #ffc107; 
+  }
 
-    /* ¡NUEVO! Estilo para la imagen del producto */
-    #product-image-container {
-        margin-bottom: 1.5rem;
-    }
-    #product-image {
-        max-width: 150px; /* Tamaño máximo de la imagen */
-        max-height: 150px;
-        border-radius: var(--radius);
-        object-fit: cover;
-        border: 1px solid var(--border-color);
-    }
-  </style>
+  /* Estilo para la imagen del producto */
+  #product-image-container {
+      margin-bottom: 1.5rem;
+  }
+  #product-image {
+      max-width: 150px;
+      max-height: 150px;
+      border-radius: var(--radius);
+      object-fit: cover;
+      border: 1px solid var(--border-color);
+  }
+</style>
 </head>
 <body>
   <header class="site-header">
@@ -253,3 +256,4 @@
   </script>
 </body>
 </html>
+
