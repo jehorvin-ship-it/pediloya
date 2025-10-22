@@ -15,11 +15,10 @@
     .rating-stars {
       display: flex;
       justify-content: center;
-      gap: 1rem; 
+      gap: 0.8rem; /* Mantenemos un espacio razonable */
       margin: 1.5rem 0; 
-      /* Quitamos font-size y height de aquí */
+      /* Quitamos tamaño y altura de aquí */
     }
-    /* ¡Aplicamos tamaño directamente al botón! */
     .star-button {
       background: none;
       border: none;
@@ -27,23 +26,32 @@
       cursor: pointer;
       padding: 0;
       transition: color 0.2s ease;
-      font-size: 4.5rem !important; /* ¡Tamaño GRANDE y forzado! */
-      line-height: 1 !important; /* ¡Alineación forzada! */
+      /* --- ¡TAMAÑO AJUSTADO! --- */
+      font-size: 3rem !important;   /* Reducido de 4.5rem a 3rem (48px aprox) */
+      line-height: 1 !important;    /* Mantenemos alineación */
+      /* --- FIN AJUSTE --- */
       outline: none; 
-      height: 4.5rem; /* Asegurar altura del botón */
-      width: 4.5rem; /* Asegurar anchura (opcional, ajusta si se ve mal) */
-      display: inline-flex; /* Ayuda a centrar contenido */
-      align-items: center; /* Centrar verticalmente */
-      justify-content: center; /* Centrar horizontalmente */
+      /* Quitamos width/height fijos para que se ajuste al font-size */
+      display: inline-flex; 
+      align-items: center; 
+      justify-content: center; 
     }
     .star-button:hover,
     .star-button.selected {
       color: #ffc107; 
     }
 
-    /* Estilo para la imagen (sin cambios) */
-    #product-image-container { /*...*/ }
-    #product-image { /*...*/ }
+    /* Estilo para la imagen (SE MANTIENE IGUAL que antes) */
+    #product-image-container {
+        margin-bottom: 1.5rem;
+    }
+    #product-image {
+        max-width: 150px; /* Tamaño máximo de la imagen */
+        max-height: 150px;
+        border-radius: var(--radius);
+        object-fit: cover;
+        border: 1px solid var(--border-color);
+    }
   </style>
 </head>
 <body>
@@ -253,5 +261,6 @@
   </script>
 </body>
 </html>
+
 
 
