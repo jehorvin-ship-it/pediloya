@@ -1,0 +1,197 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calificar Pedido - PediloYa</title>
+
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="auth.js"></script>
+
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Estilos específicos para las estrellas */
+    .rating-stars {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      font-size: 2.5rem; /* Tamaño de las estrellas */
+      margin: 2rem 0;
+    }
+    .star-button {
+      background: none;
+      border: none;
+      color: #ccc; /* Color inicial gris */
+      cursor: pointer;
+      padding: 0;
+      transition: color 0.2s ease;
+    }
+    .star-button:hover,
+    .star-button.selected {
+      color: #ffc107; /* Color amarillo al pasar o seleccionar */
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="logo" href="index.html">
+        <img src="logo.png" alt="PediloYa logo" onerror="this.style.display='none'">
+      </a>
+    </div>
+  </header>
+
+  <main class="container" style="max-width: 500px; text-align: center;">
+    <a class="back-link" href="mis-pedidos.html">← Volver a Mis Pedidos</a>
+    
+    <h1>Califica tu Pedido</h1>
+    <p id="order-info">Calificando el pedido #<span id="pedido-id-display">...</span> del negocio.</p>
+    
+    <div class="rating-stars">
+      <button class="star-button" data-value="1">★</button>
+      <button class="star-button" data-value="2">★</button>
+      <button class="star-button" data-value="3">★</button>
+      <button class="star-button" data-value="4">★</button>
+      <button class="star-button" data-value="5">★</button>
+    </div>
+
+    <input type="hidden" id="selected-rating" value="0">
+    <input type="hidden" id="pedido-id" value="">
+    <input type="hidden" id="negocio-id" value="">
+
+    <button id="submit-rating-btn" class="btn" style="width: 100%; padding: 0.9rem;" disabled>Enviar Calificación</button>
+    
+    <p id="notification" style="color: green; margin-top: 1rem; display: none;"></p>
+    <p id="error-message" style="color:#b94a48; margin-top: 1rem; display: none;"></p>
+
+  </main>
+
+  <footer class="site-footer">© PediloYa</footer>
+
+  <script src="lib.js"></script>
+  <script>
+    // URL del script de Google (asegúrate que sea la correcta)
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXyXzIAelblfS89-_uD29B4M1ksXzeUajIueaAid-11l6AO68GSNmoU7x3QHTu4xr2/exec"; 
+
+    // Elementos del DOM
+    const starsContainer = document.querySelector('.rating-stars');
+    const starButtons = document.querySelectorAll('.star-button');
+    const selectedRatingInput = document.getElementById('selected-rating');
+    const pedidoIdInput = document.getElementById('pedido-id');
+    const negocioIdInput = document.getElementById('negocio-id');
+    const submitBtn = document.getElementById('submit-rating-btn');
+    const notificationP = document.getElementById('notification');
+    const errorP = document.getElementById('error-message');
+    const pedidoIdDisplay = document.getElementById('pedido-id-display');
+
+    let currentRating = 0;
+
+    // --- Obtener IDs de la URL ---
+    (async () => {
+        const pedidoId = qParam('pedidoId');
+        const negocioId = qParam('negocioId');
+
+        if (!pedidoId || !negocioId) {
+            document.querySelector('main').innerHTML = '<h1>Error</h1><p>Falta información del pedido o negocio para calificar.</p><a href="mis-pedidos.html" class="btn">Volver</a>';
+            return;
+        }
+
+        pedidoIdInput.value = pedidoId;
+        negocioIdInput.value = negocioId;
+        pedidoIdDisplay.textContent = pedidoId;
+
+        // Opcional: Podrías hacer un fetch al script para obtener el nombre del negocio y mostrarlo
+        // const negocioInfo = await fetch(...);
+        // document.getElementById('order-info').textContent = `Calificando el pedido #${pedidoId} de ${negocioInfo.nombre}`;
+
+    })();
+
+
+    // --- Lógica de Selección de Estrellas ---
+    starButtons.forEach(button => {
+        button.addEventListener('mouseover', handleMouseOver);
+        button.addEventListener('mouseout', handleMouseOut);
+        button.addEventListener('click', handleClick);
+    });
+
+    function handleMouseOver(event) {
+        const hoverValue = parseInt(event.target.dataset.value);
+        highlightStars(hoverValue);
+    }
+
+    function handleMouseOut() {
+        highlightStars(currentRating); // Volver a la selección actual
+    }
+
+    function handleClick(event) {
+        currentRating = parseInt(event.target.dataset.value);
+        selectedRatingInput.value = currentRating;
+        highlightStars(currentRating);
+        submitBtn.disabled = false; // Habilitar botón al seleccionar
+        notificationP.style.display = 'none'; // Ocultar mensajes previos
+        errorP.style.display = 'none';
+    }
+
+    function highlightStars(value) {
+        starButtons.forEach(star => {
+            if (parseInt(star.dataset.value) <= value) {
+                star.classList.add('selected');
+            } else {
+                star.classList.remove('selected');
+            }
+        });
+    }
+
+    // --- Lógica de Envío de Calificación ---
+    submitBtn.addEventListener('click', async () => {
+        const rating = parseInt(selectedRatingInput.value);
+        const pedidoId = pedidoIdInput.value;
+        const negocioId = negocioIdInput.value;
+
+        if (rating === 0 || !pedidoId || !negocioId) {
+            errorP.textContent = "Por favor, selecciona una calificación.";
+            errorP.style.display = 'block';
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Enviando...";
+        errorP.style.display = 'none';
+        notificationP.style.display = 'none';
+
+        try {
+            const payload = {
+                pedidoId: pedidoId,
+                negocioId: negocioId,
+                calificacion: rating
+            };
+
+            const response = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'addRating', payload: payload })
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                notificationP.textContent = "¡Gracias por tu calificación!";
+                notificationP.style.display = 'block';
+                submitBtn.textContent = "Calificación Enviada 👍";
+                // Opcional: Redirigir después de unos segundos
+                // setTimeout(() => { window.location.href = 'mis-pedidos.html'; }, 2000);
+            } else {
+                throw new Error(result.message || 'Error desconocido del servidor.');
+            }
+
+        } catch (error) {
+            console.error("Error al enviar calificación:", error);
+            errorP.textContent = `Error: ${error.message}. Intenta de nuevo.`;
+            errorP.style.display = 'block';
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Enviar Calificación";
+        }
+    });
+
+  </script>
+</body>
+</html>
