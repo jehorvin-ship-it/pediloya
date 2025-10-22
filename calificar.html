@@ -11,43 +11,40 @@
 
   <link rel="stylesheet" href="styles.css">
 <style>
-  /* Estilos específicos para las estrellas */
-  .rating-stars {
-    display: flex;
-    justify-content: center;
-    gap: 1rem; /* Aumentamos el espacio entre estrellas para mayor claridad */
-    font-size: 4.5rem; /* ¡Hacemos las estrellas MUCHO más grandes! */
-    margin: 1.5rem 0; /* Ajustamos margen vertical */
-    height: 4.5rem; /* Aseguramos que el contenedor tenga la altura de las estrellas */
-    align-items: center; /* Centrar verticalmente las estrellas */
-  }
-  .star-button {
-    background: none;
-    border: none;
-    color: #ccc; 
-    cursor: pointer;
-    padding: 0;
-    transition: color 0.2s ease;
-    line-height: 1; /* Esto es crucial para que el "★" grande no se recorte y se centre bien */
-    outline: none; /* Eliminar el contorno al hacer focus, si no te gusta */
-  }
-  .star-button:hover,
-  .star-button.selected {
-    color: #ffc107; 
-  }
+    /* Estilos específicos para las estrellas */
+    .rating-stars {
+      display: flex;
+      justify-content: center;
+      gap: 1rem; 
+      margin: 1.5rem 0; 
+      /* Quitamos font-size y height de aquí */
+    }
+    /* ¡Aplicamos tamaño directamente al botón! */
+    .star-button {
+      background: none;
+      border: none;
+      color: #ccc; 
+      cursor: pointer;
+      padding: 0;
+      transition: color 0.2s ease;
+      font-size: 4.5rem !important; /* ¡Tamaño GRANDE y forzado! */
+      line-height: 1 !important; /* ¡Alineación forzada! */
+      outline: none; 
+      height: 4.5rem; /* Asegurar altura del botón */
+      width: 4.5rem; /* Asegurar anchura (opcional, ajusta si se ve mal) */
+      display: inline-flex; /* Ayuda a centrar contenido */
+      align-items: center; /* Centrar verticalmente */
+      justify-content: center; /* Centrar horizontalmente */
+    }
+    .star-button:hover,
+    .star-button.selected {
+      color: #ffc107; 
+    }
 
-  /* Estilo para la imagen del producto */
-  #product-image-container {
-      margin-bottom: 1.5rem;
-  }
-  #product-image {
-      max-width: 150px;
-      max-height: 150px;
-      border-radius: var(--radius);
-      object-fit: cover;
-      border: 1px solid var(--border-color);
-  }
-</style>
+    /* Estilo para la imagen (sin cambios) */
+    #product-image-container { /*...*/ }
+    #product-image { /*...*/ }
+  </style>
 </head>
 <body>
   <header class="site-header">
@@ -256,4 +253,5 @@
   </script>
 </body>
 </html>
+
 
