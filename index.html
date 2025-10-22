@@ -164,28 +164,40 @@
         }
 
         // --- ¡FUNCIÓN MODIFICADA PARA MOSTRAR CALIFICACIONES! ---
+        // EN index.html -> DENTRO DEL <script>
+
+        // --- ¡FUNCIÓN MODIFICADA PARA MOSTRAR CALIFICACIONES! ---
         function createBizRow(b, ratingsSummary){
           const delivery = b.DeliveryFee && "" !== b.DeliveryFee ? `Delivery: C$ ${Number(b.DeliveryFee).toFixed(2)}` : "Sin delivery";
           
-          let ratingHtml = '';
-          const ratingData = ratingsSummary[b.ID];
-          if (ratingData) {
+          // --- LÓGICA AÑADIDA PARA CALIFICACIONES ---
+          let ratingHtml = ''; // Empezamos con HTML vacío
+          const ratingData = ratingsSummary[b.ID]; // Buscamos la calificación para ESTE negocio
+        
+          if (ratingData && ratingData.votos > 0) { // Si hay datos y al menos un voto
             ratingHtml = `
               <div class="rating-display">
-                <span class="star-icon">⭐️</span>
-                <span class="rating-score">${ratingData.promedio}</span>
-                <span class="rating-votes">(${ratingData.votos})</span>
+                <span class="star-icon">⭐</span>
+                <span class="rating-score">${ratingData.promedio.toFixed(1)}</span> 
+                <span class="rating-votes">(${ratingData.votos} ${ratingData.votos === 1 ? 'voto' : 'votos'})</span>
               </div>
             `;
+          } else {
+              // Opcional: Mostrar algo si no hay calificaciones aún
+              // ratingHtml = '<p class="no-rating">Aún sin calificar</p>'; 
           }
-
+          // --- FIN DE LÓGICA AÑADIDA ---
+        
           const d = document.createElement("div");
           d.className = "biz-row";
+          
+          // --- PLANTILLA HTML ACTUALIZADA ---
+          // Se inserta ${ratingHtml} justo debajo del nombre del negocio (<h3>)
           d.innerHTML = `
             <img src="${b.Imagen||""}" alt="${b.NombreNegocio||"Imagen negocio"}" onerror="this.src='https://via.placeholder.com/300x200?text=Sin'">
             <div>
               <h3>${b.NombreNegocio||"—"}</h3>
-              ${ratingHtml}
+              ${ratingHtml} 
               <p>${b.Categoria||""} • ${b.Horario||""}</p>
               <p>${b.Descripcion||""}</p>
               <div class="row">
@@ -193,8 +205,16 @@
                 <span style="font-weight: 600; margin-left: auto;">${delivery}</span>
               </div>
             </div>`;
+          // --- FIN PLANTILLA ACTUALIZADA ---
+          
           return d;
         }
+
+// El resto de tu script en index.html (la carga inicial, la lógica de búsqueda, etc.)
+// permanece exactamente igual. Asegúrate de que la llamada a createBizRow
+// siga pasando el argumento 'summary':
+// destacados.forEach(b => list.appendChild(createBizRow(b, summary)));
+// matchingBusinesses.forEach(b => { list.appendChild(createBizRow(b, summary)); });
 
       } catch (err) {
         console.error(err);
@@ -204,3 +224,4 @@
   </script>
 </body>
 </html>
+
