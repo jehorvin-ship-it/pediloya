@@ -5,27 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Calificar Pedido - PediloYa</title>
 
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-<script src="auth.js"></script>
-<link rel="stylesheet" href="styles.css">
-<script src="lib.js"></script>
-
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <script src="auth.js"></script>
   <link rel="stylesheet" href="styles.css">
-<style>
+  <script src="lib.js"></script> <link rel="stylesheet" href="styles.css">
+ <style>
     /* Estilos específicos para las estrellas */
     .rating-stars {
       display: flex;
       justify-content: center;
       gap: 0.8rem; /* Mantenemos un espacio razonable */
-      margin: 1.5rem 0; 
+      margin: 1.5rem 0;
       /* Quitamos tamaño y altura de aquí */
     }
     .star-button {
       background: none;
       border: none;
-      color: #ccc; 
+      color: #ccc;
       cursor: pointer;
       padding: 0;
       transition: color 0.2s ease;
@@ -33,15 +31,15 @@
       font-size: 3rem !important;   /* Reducido de 4.5rem a 3rem (48px aprox) */
       line-height: 1 !important;    /* Mantenemos alineación */
       /* --- FIN AJUSTE --- */
-      outline: none; 
+      outline: none;
       /* Quitamos width/height fijos para que se ajuste al font-size */
-      display: inline-flex; 
-      align-items: center; 
-      justify-content: center; 
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     .star-button:hover,
     .star-button.selected {
-      color: #ffc107; 
+      color: #ffc107;
     }
 
     /* Estilo para la imagen (SE MANTIENE IGUAL que antes) */
@@ -102,11 +100,12 @@
 
   <footer class="site-footer">© PediloYa</footer>
 
-  <script src="lib.js"></script>
+  <script src="lib.js"></script> 
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXyXzIAelblfS89-_uD29B4M1ksXzeUajIueaAid-11l6AO68GSNmoU7x3QHTu4xr2/exec"; 
+    // SCRIPT_URL ya no es necesaria aquí si solo usamos Firebase para guardar
+    // const SCRIPT_URL = "https://..."; 
 
-    // Elementos del DOM
+    // Elementos del DOM (sin cambios)
     const starsContainer = document.querySelector('.rating-stars');
     const starButtons = document.querySelectorAll('.star-button');
     const selectedRatingInput = document.getElementById('selected-rating');
@@ -115,8 +114,6 @@
     const submitBtn = document.getElementById('submit-rating-btn');
     const notificationP = document.getElementById('notification');
     const errorP = document.getElementById('error-message');
-    
-    // Elementos para mostrar info (¡NUEVOS!)
     const pedidoIdDisplay = document.getElementById('pedido-id-display');
     const productNameDisplay = document.getElementById('product-name');
     const negocioNameDisplay = document.getElementById('negocio-name');
@@ -124,7 +121,7 @@
 
     let currentRating = 0;
 
-    // --- Obtener IDs y Datos del Pedido/Negocio ---
+    // --- Obtener IDs y Datos del Pedido/Negocio (sin cambios) ---
     (async () => {
         const pedidoId = qParam('pedidoId');
         const negocioId = qParam('negocioId');
@@ -138,37 +135,29 @@
         negocioIdInput.value = negocioId;
         pedidoIdDisplay.textContent = pedidoId;
 
-        // --- ¡NUEVO! Buscar datos del pedido y negocio ---
         try {
-            // Usamos Promise.all para cargar ambas hojas en paralelo
             const [pedidosData, negociosData, productosData] = await Promise.all([
-                fetchSheetByGid(GID_PEDIDOS), // Necesitamos GID_PEDIDOS en lib.js
+                fetchSheetByGid(GID_PEDIDOS), 
                 fetchSheetByGid(GID_NEGOCIOS),
                 fetchSheetByGid(GID_PRODUCTOS)
             ]);
 
-            // Buscar el pedido específico
-            const pedidoActual = pedidosData.find(p => p.ID_Pedido == pedidoId); // Usar == por si viene como número o string
-            // Buscar el negocio
+            const pedidoActual = pedidosData.find(p => p.ID_Pedido == pedidoId); 
             const negocioActual = negociosData.find(n => n.ID === negocioId);
 
             if (pedidoActual) {
                 productNameDisplay.textContent = pedidoActual.Producto || 'Producto desconocido';
-                
-                // Intentar buscar la imagen del producto en la hoja de productos
                 const productoInfo = productosData.find(prod => prod.Nombre === pedidoActual.Producto && prod.BusinessID === negocioId);
                 if (productoInfo && productoInfo.Imagen) {
                    productImage.src = productoInfo.Imagen;
                    productImage.alt = pedidoActual.Producto;
-                } else if (pedidoActual.ImagenProducto) { // Usar imagen guardada en el pedido si existe
+                } else if (pedidoActual.ImagenProducto) { 
                    productImage.src = pedidoActual.ImagenProducto;
                    productImage.alt = pedidoActual.Producto;
                 } else {
-                   // Usar imagen genérica si no hay ninguna
                    productImage.src = 'https://via.placeholder.com/150?text=Sin+Imagen';
                    productImage.alt = 'Sin imagen';
                 }
-                
             } else {
                  productNameDisplay.textContent = 'Pedido no encontrado';
             }
@@ -181,12 +170,9 @@
 
         } catch (fetchError) {
             console.error("Error al buscar datos del pedido/negocio:", fetchError);
-            // Dejar los textos por defecto ("...cargando") o mostrar un mensaje
             productNameDisplay.textContent = '(Error al cargar)';
             negocioNameDisplay.textContent = '(Error al cargar)';
         }
-        // --- FIN DE BUSCAR DATOS ---
-
     })();
 
 
@@ -196,9 +182,9 @@
         button.addEventListener('mouseout', handleMouseOut);
         button.addEventListener('click', handleClick);
     });
-    function handleMouseOver(event) { /*...*/ highlightStars(parseInt(event.target.dataset.value)); }
-    function handleMouseOut() { /*...*/ highlightStars(currentRating); }
-    function handleClick(event) { /*...*/ 
+    function handleMouseOver(event) { highlightStars(parseInt(event.target.dataset.value)); }
+    function handleMouseOut() { highlightStars(currentRating); }
+    function handleClick(event) { 
         currentRating = parseInt(event.target.dataset.value);
         selectedRatingInput.value = currentRating;
         highlightStars(currentRating);
@@ -206,15 +192,14 @@
         notificationP.style.display = 'none';
         errorP.style.display = 'none';
     }
-    function highlightStars(value) { /*...*/
+    function highlightStars(value) {
         starButtons.forEach(star => {
             star.classList.toggle('selected', parseInt(star.dataset.value) <= value);
         });
     }
 
-    // --- Lógica de Envío de Calificación (sin cambios) ---
+    // --- ¡NUEVA LÓGICA DE ENVÍO DE CALIFICACIÓN A FIREBASE! ---
     submitBtn.addEventListener('click', async () => {
-        // ... (código igual) ...
         const rating = parseInt(selectedRatingInput.value);
         const pedidoId = pedidoIdInput.value;
         const negocioId = negocioIdInput.value;
@@ -231,40 +216,37 @@
         notificationP.style.display = 'none';
 
         try {
-            const payload = {
-                pedidoId: pedidoId,
-                negocioId: negocioId,
-                calificacion: rating
+            // Creamos una referencia a la ubicación donde guardaremos la calificación
+            // Usamos `pedido_${pedidoId}` para asegurarnos de que sea una clave válida
+            const ratingRef = db.ref(`calificaciones/${negocioId}/pedido_${pedidoId}`); // 'db' viene de auth.js
+
+            // Creamos el objeto a guardar
+            const ratingData = {
+                rating: rating,
+                timestamp: firebase.database.ServerValue.TIMESTAMP // Firebase pone la hora del servidor
             };
 
-            const response = await fetch(SCRIPT_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'addRating', payload: payload })
-            });
-            const result = await response.json();
+            // Guardamos los datos en Firebase
+            await ratingRef.set(ratingData);
 
-            if (result.status === 'success') {
-                notificationP.textContent = "¡Gracias por tu calificación!";
-                notificationP.style.display = 'block';
-                submitBtn.textContent = "Calificación Enviada 👍";
-                // setTimeout(() => { window.location.href = 'mis-pedidos.html'; }, 2000);
-            } else {
-                throw new Error(result.message || 'Error desconocido del servidor.');
-            }
+            // Si llegamos aquí, se guardó correctamente
+            notificationP.textContent = "¡Gracias por tu calificación!";
+            notificationP.style.display = 'block';
+            submitBtn.textContent = "Calificación Enviada 👍";
+            
+            // Opcional: Redirigir después de unos segundos
+            setTimeout(() => { window.location.href = 'mis-pedidos.html'; }, 2000);
 
         } catch (error) {
-            console.error("Error al enviar calificación:", error);
-            errorP.textContent = `Error: ${error.message}. Intenta de nuevo.`;
+            console.error("Error al enviar calificación a Firebase:", error);
+            errorP.textContent = `Error al guardar: ${error.message}. Intenta de nuevo.`;
             errorP.style.display = 'block';
             submitBtn.disabled = false;
             submitBtn.textContent = "Enviar Calificación";
         }
     });
+    // --- FIN DE LA NUEVA LÓGICA DE ENVÍO ---
 
   </script>
 </body>
 </html>
-
-
-
-
