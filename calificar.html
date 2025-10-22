@@ -15,21 +15,34 @@
     .rating-stars {
       display: flex;
       justify-content: center;
-      gap: 0.5rem;
-      font-size: 2.5rem; /* Tamaño de las estrellas */
-      margin: 2rem 0;
+      gap: 0.8rem; /* Aumentamos un poco el espacio */
+      font-size: 3.5rem; /* ¡Estrellas mucho más grandes! */
+      margin: 1.5rem 0; /* Ajustamos margen vertical */
     }
     .star-button {
       background: none;
       border: none;
-      color: #ccc; /* Color inicial gris */
+      color: #ccc; 
       cursor: pointer;
       padding: 0;
       transition: color 0.2s ease;
+      line-height: 1; /* Para alinear mejor las estrellas grandes */
     }
     .star-button:hover,
     .star-button.selected {
-      color: #ffc107; /* Color amarillo al pasar o seleccionar */
+      color: #ffc107; 
+    }
+
+    /* ¡NUEVO! Estilo para la imagen del producto */
+    #product-image-container {
+        margin-bottom: 1.5rem;
+    }
+    #product-image {
+        max-width: 150px; /* Tamaño máximo de la imagen */
+        max-height: 150px;
+        border-radius: var(--radius);
+        object-fit: cover;
+        border: 1px solid var(--border-color);
     }
   </style>
 </head>
@@ -46,7 +59,16 @@
     <a class="back-link" href="mis-pedidos.html">← Volver a Mis Pedidos</a>
     
     <h1>Califica tu Pedido</h1>
-    <p id="order-info">Calificando el pedido #<span id="pedido-id-display">...</span> del negocio.</p>
+
+    <div id="product-image-container">
+        <img id="product-image" src="https://via.placeholder.com/150?text=Cargando..." alt="Imagen del producto">
+    </div>
+
+    <p id="order-info" style="font-size: 1.1rem; font-weight: 500;">
+      Calificando <strong id="product-name">producto...</strong><br>
+      de <strong id="negocio-name">negocio...</strong><br>
+      <span style="font-size: 0.9rem; color: var(--muted);">(Pedido #<span id="pedido-id-display">...</span>)</span>
+    </p>
     
     <div class="rating-stars">
       <button class="star-button" data-value="1">★</button>
@@ -71,7 +93,6 @@
 
   <script src="lib.js"></script>
   <script>
-    // URL del script de Google (asegúrate que sea la correcta)
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXyXzIAelblfS89-_uD29B4M1ksXzeUajIueaAid-11l6AO68GSNmoU7x3QHTu4xr2/exec"; 
 
     // Elementos del DOM
@@ -83,11 +104,16 @@
     const submitBtn = document.getElementById('submit-rating-btn');
     const notificationP = document.getElementById('notification');
     const errorP = document.getElementById('error-message');
+    
+    // Elementos para mostrar info (¡NUEVOS!)
     const pedidoIdDisplay = document.getElementById('pedido-id-display');
+    const productNameDisplay = document.getElementById('product-name');
+    const negocioNameDisplay = document.getElementById('negocio-name');
+    const productImage = document.getElementById('product-image');
 
     let currentRating = 0;
 
-    // --- Obtener IDs de la URL ---
+    // --- Obtener IDs y Datos del Pedido/Negocio ---
     (async () => {
         const pedidoId = qParam('pedidoId');
         const negocioId = qParam('negocioId');
@@ -101,50 +127,83 @@
         negocioIdInput.value = negocioId;
         pedidoIdDisplay.textContent = pedidoId;
 
-        // Opcional: Podrías hacer un fetch al script para obtener el nombre del negocio y mostrarlo
-        // const negocioInfo = await fetch(...);
-        // document.getElementById('order-info').textContent = `Calificando el pedido #${pedidoId} de ${negocioInfo.nombre}`;
+        // --- ¡NUEVO! Buscar datos del pedido y negocio ---
+        try {
+            // Usamos Promise.all para cargar ambas hojas en paralelo
+            const [pedidosData, negociosData, productosData] = await Promise.all([
+                fetchSheetByGid(GID_PEDIDOS), // Necesitamos GID_PEDIDOS en lib.js
+                fetchSheetByGid(GID_NEGOCIOS),
+                fetchSheetByGid(GID_PRODUCTOS)
+            ]);
+
+            // Buscar el pedido específico
+            const pedidoActual = pedidosData.find(p => p.ID_Pedido == pedidoId); // Usar == por si viene como número o string
+            // Buscar el negocio
+            const negocioActual = negociosData.find(n => n.ID === negocioId);
+
+            if (pedidoActual) {
+                productNameDisplay.textContent = pedidoActual.Producto || 'Producto desconocido';
+                
+                // Intentar buscar la imagen del producto en la hoja de productos
+                const productoInfo = productosData.find(prod => prod.Nombre === pedidoActual.Producto && prod.BusinessID === negocioId);
+                if (productoInfo && productoInfo.Imagen) {
+                   productImage.src = productoInfo.Imagen;
+                   productImage.alt = pedidoActual.Producto;
+                } else if (pedidoActual.ImagenProducto) { // Usar imagen guardada en el pedido si existe
+                   productImage.src = pedidoActual.ImagenProducto;
+                   productImage.alt = pedidoActual.Producto;
+                } else {
+                   // Usar imagen genérica si no hay ninguna
+                   productImage.src = 'https://via.placeholder.com/150?text=Sin+Imagen';
+                   productImage.alt = 'Sin imagen';
+                }
+                
+            } else {
+                 productNameDisplay.textContent = 'Pedido no encontrado';
+            }
+
+            if (negocioActual) {
+                negocioNameDisplay.textContent = negocioActual.NombreNegocio || 'Negocio desconocido';
+            } else {
+                 negocioNameDisplay.textContent = 'Negocio no encontrado';
+            }
+
+        } catch (fetchError) {
+            console.error("Error al buscar datos del pedido/negocio:", fetchError);
+            // Dejar los textos por defecto ("...cargando") o mostrar un mensaje
+            productNameDisplay.textContent = '(Error al cargar)';
+            negocioNameDisplay.textContent = '(Error al cargar)';
+        }
+        // --- FIN DE BUSCAR DATOS ---
 
     })();
 
 
-    // --- Lógica de Selección de Estrellas ---
+    // --- Lógica de Selección de Estrellas (sin cambios) ---
     starButtons.forEach(button => {
         button.addEventListener('mouseover', handleMouseOver);
         button.addEventListener('mouseout', handleMouseOut);
         button.addEventListener('click', handleClick);
     });
-
-    function handleMouseOver(event) {
-        const hoverValue = parseInt(event.target.dataset.value);
-        highlightStars(hoverValue);
-    }
-
-    function handleMouseOut() {
-        highlightStars(currentRating); // Volver a la selección actual
-    }
-
-    function handleClick(event) {
+    function handleMouseOver(event) { /*...*/ highlightStars(parseInt(event.target.dataset.value)); }
+    function handleMouseOut() { /*...*/ highlightStars(currentRating); }
+    function handleClick(event) { /*...*/ 
         currentRating = parseInt(event.target.dataset.value);
         selectedRatingInput.value = currentRating;
         highlightStars(currentRating);
-        submitBtn.disabled = false; // Habilitar botón al seleccionar
-        notificationP.style.display = 'none'; // Ocultar mensajes previos
+        submitBtn.disabled = false; 
+        notificationP.style.display = 'none';
         errorP.style.display = 'none';
     }
-
-    function highlightStars(value) {
+    function highlightStars(value) { /*...*/
         starButtons.forEach(star => {
-            if (parseInt(star.dataset.value) <= value) {
-                star.classList.add('selected');
-            } else {
-                star.classList.remove('selected');
-            }
+            star.classList.toggle('selected', parseInt(star.dataset.value) <= value);
         });
     }
 
-    // --- Lógica de Envío de Calificación ---
+    // --- Lógica de Envío de Calificación (sin cambios) ---
     submitBtn.addEventListener('click', async () => {
+        // ... (código igual) ...
         const rating = parseInt(selectedRatingInput.value);
         const pedidoId = pedidoIdInput.value;
         const negocioId = negocioIdInput.value;
@@ -177,7 +236,6 @@
                 notificationP.textContent = "¡Gracias por tu calificación!";
                 notificationP.style.display = 'block';
                 submitBtn.textContent = "Calificación Enviada 👍";
-                // Opcional: Redirigir después de unos segundos
                 // setTimeout(() => { window.location.href = 'mis-pedidos.html'; }, 2000);
             } else {
                 throw new Error(result.message || 'Error desconocido del servidor.');
