@@ -1,91 +1,108 @@
-// lib.js - funciones comunes
-const SPREADSHEET_ID = '1p6zG-wEsq577W6Y_gs2TI04xE8jrQMAui9XYR13MvIo';
-const GID_NEGOCIOS = '0';
-const GID_PRODUCTOS = '1322681414';
+// ======================================================
+//             lib.js (Librería de Funciones Comunes)
+// ======================================================
 
-function parseCSV(text) {
-  const rows = [];
-  let row = [];
-  let cell = '';
-  let inQuotes = false;
-  for (let i=0;i<text.length;i++){
-    const c = text[i];
-    const next = text[i+1];
-    if (c === '"') {
-      if (inQuotes && next === '"') { cell += '"'; i++; }
-      else inQuotes = !inQuotes;
-    } else if (c === ',' && !inQuotes) {
-      row.push(cell); cell = '';
-    } else if ((c === '\n' || c === '\r') && !inQuotes) {
-      if (c === '\r' && next === '\n') { i++; }
-      row.push(cell); rows.push(row);
-      row = []; cell = '';
-    } else {
-      cell += c;
-    }
-  }
-  if (cell !== '' || row.length > 0) { row.push(cell); rows.push(row); }
-  return rows;
-}
+// --- ¡GIDs de las Hojas de Cálculo! ---
+const GID_NEGOCIOS = '0'; // Asegúrate de que este sea el GID correcto para 'Negocios'
+const GID_PRODUCTOS = '1171518345'; // Asegúrate de que este sea el GID correcto para 'Productos'
+const GID_PEDIDOS = '1660428263'; // <-- ¡LÍNEA AÑADIDA! GID para 'Pedidos'
+// Añade aquí GIDs para otras hojas si las necesitas (ej: GID_CALIFICACIONES)
 
-async function fetchSheetByGid(gid) {
-  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${gid}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('No se pudo cargar la hoja. Revisa la publicación/compartir.');
-  const txt = await res.text();
-  const rows = parseCSV(txt);
-  if (rows.length === 0) return [];
-  const headers = rows[0].map(h => h.trim());
-  const data = rows.slice(1).map(r => {
-    const obj = {};
-    headers.forEach((h,i) => obj[h] = (r[i] || '').trim());
-    return obj;
-  });
-  return data;
-}
+// --- URL Base del Script (Asegúrate de que sea la correcta) ---
+// Es buena práctica tenerla aquí también, aunque la definas en cada HTML.
+// O podrías quitarla de los HTML y leerla desde aquí.
+const SCRIPT_URL_GLOBAL = "https://script.google.com/macros/s/AKfycbwXyXzIAelblfS89-_uD29B4M1ksXzeUajIueaAid-11l6AO68GSNmoU7x3QHTu4xr2/exec"; 
 
-// util: obtener query param
+// --- Funciones de Utilidad ---
+
+/**
+ * Obtiene un parámetro de la URL actual por su nombre.
+ * @param {string} name - El nombre del parámetro.
+ * @returns {string|null} - El valor del parámetro o null si no se encuentra.
+ */
 function qParam(name) {
-  const p = new URLSearchParams(window.location.search);
-  return p.get(name);
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get(name);
 }
 
-// formato moneda simple
-function formatoMoney(v) {
-  return Number(v || 0).toFixed(2);
-}
-
-// codifica mensaje WhatsApp
-function waEncode(msg) {
-  return encodeURIComponent(msg).replace(/%20/g, '+');
-}
-
-// === Carrito ===
-function getCart() {
-  const cart = localStorage.getItem("cart");
-  return cart ? JSON.parse(cart) : [];
-}
-
-function saveCart(cart) {
-  localStorage.setItem("cart", JSON.stringify(cart));
-}
-
-function addToCart(product) {
-  let cart = getCart();
-  const index = cart.findIndex(p => p.id === product.id);
-  if (index > -1) {
-    cart[index].qty += product.qty; // ya existe, sumamos cantidad
-  } else {
-    cart.push(product);
+/**
+ * Función genérica para obtener datos de una hoja específica usando su GID.
+ * Hace la conversión de CSV a JSON directamente.
+ * @param {string} gid - El GID de la hoja de cálculo.
+ * @returns {Promise<Array<Object>>} - Una promesa que resuelve con un array de objetos (filas).
+ */
+async function fetchSheetByGid(gid) {
+  if (!gid) {
+    console.error("fetchSheetByGid: GID no proporcionado.");
+    throw new Error("GID no proporcionado.");
   }
-  saveCart(cart);
+  
+  // Construye la URL para exportar como CSV
+  const sheetId = '1p6zG-wEsq577W6Y_gs2TI04xE8jrQMAui9XYR13MvIo'; // Tu ID de Spreadsheet
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+
+  try {
+    const response = await fetch(csvUrl);
+    if (!response.ok) {
+      throw new Error(`Error al cargar la hoja GID ${gid}: ${response.statusText}`);
+    }
+    const csvText = await response.text();
+    return csvToJson(csvText); // Convierte el CSV a un array de objetos
+  } catch (error) {
+    console.error(`Error en fetchSheetByGid (${gid}):`, error);
+    throw error; // Re-lanza el error para que la función que llama lo maneje
+  }
 }
 
-function removeFromCart(productId) {
-  let cart = getCart().filter(p => p.id !== productId);
-  saveCart(cart);
+/**
+ * Convierte texto CSV a un array de objetos JSON.
+ * Asume que la primera fila del CSV son los encabezados (claves del JSON).
+ * @param {string} csvText - El texto en formato CSV.
+ * @returns {Array<Object>} - Un array donde cada objeto representa una fila.
+ */
+function csvToJson(csvText) {
+  const lines = csvText.split(/\r\n|\n/); // Divide por saltos de línea
+  if (lines.length < 2) return []; // Si no hay datos o solo encabezados
+
+  const headers = lines[0].split(',').map(header => header.trim()); // Obtiene encabezados limpios
+  const result = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const currentLine = lines[i];
+    // Manejo básico de comas dentro de comillas (no perfecto para CSV complejos)
+    const values = [];
+    let currentVal = '';
+    let inQuotes = false;
+    for (let char of currentLine) {
+        if (char === '"' && inQuotes && i + 1 < currentLine.length && currentLine[i + 1] === '"') {
+            // Manejar comillas dobles escapadas ""
+            currentVal += '"';
+            i++; // Saltar la siguiente comilla
+        } else if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            values.push(currentVal.trim());
+            currentVal = '';
+        } else {
+            currentVal += char;
+        }
+    }
+    values.push(currentVal.trim()); // Añadir el último valor
+
+    // Si la línea estaba vacía o tenía menos valores que encabezados, la saltamos
+    if (values.length < headers.length || values.every(val => val === '')) {
+        continue;
+    }
+
+    const obj = {};
+    for (let j = 0; j < headers.length; j++) {
+      // Si hay menos valores que encabezados, asignar cadena vacía
+      obj[headers[j]] = values[j] !== undefined ? values[j] : ""; 
+    }
+    result.push(obj);
+  }
+  return result;
 }
 
-function clearCart() {
-  localStorage.removeItem("cart");
-}
+// Puedes añadir más funciones útiles aquí si las necesitas en varias páginas
+// Por ejemplo, formateo de fechas, validaciones, etc.
