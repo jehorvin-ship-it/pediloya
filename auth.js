@@ -1,8 +1,8 @@
 // ======================================================
-//             auth.js (Cerebro de Autenticación)
+//             auth.js (Cerebro de AutenticaciÃ³n)
 // ======================================================
 
-// --- ¡Pega tu configuración de Firebase aquí! ---
+// --- Â¡Pega tu configuraciÃ³n de Firebase aquÃ­! ---
 const firebaseConfig = {
   apiKey: "AIzaSyBcsps_cdROmgwHRNkHNUbSqO2E26u36Ms",
   authDomain: "pediloya-d210a.firebaseapp.com",
@@ -16,17 +16,18 @@ const firebaseConfig = {
 // Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
+const db = firebase.database(); // <-- Â¡LÃNEA AÃ‘ADIDA PARA REALTIME DATABASE!
 
 /**
- * Función global para obtener el estado del usuario.
+ * FunciÃ³n global para obtener el estado del usuario.
  * Devuelve una promesa que se resuelve con:
- * - El objeto de usuario (si está logueado)
- * - null (si no está logueado)
+ * - El objeto de usuario (si estÃ¡ logueado)
+ * - null (si no estÃ¡ logueado)
  */
 function getCurrentUser() {
   return new Promise((resolve, reject) => {
     // onAuthStateChanged es un "oyente"
-    // Se dispara en cuanto carga la página con el estado del usuario
+    // Se dispara en cuanto carga la pÃ¡gina con el estado del usuario
     const unsubscribe = auth.onAuthStateChanged(user => {
       unsubscribe(); // Dejamos de escuchar
       resolve(user); // Devolvemos el usuario (o null)
@@ -35,7 +36,7 @@ function getCurrentUser() {
 }
 
 /**
- * Función para cerrar la sesión del usuario.
+ * FunciÃ³n para cerrar la sesiÃ³n del usuario.
  * Devuelve una promesa.
  */
 function logOut() {
@@ -43,21 +44,21 @@ function logOut() {
 }
 
 /**
- * Devuelve el número de teléfono del usuario en formato local (88889999)
- * o null si no está logueado.
+ * Devuelve el nÃºmero de telÃ©fono del usuario en formato local (88889999)
+ * o null si no estÃ¡ logueado.
  */
 async function getUserPhone() {
     try {
         const user = await getCurrentUser();
         if (user && user.phoneNumber) {
-            // El número de Firebase viene como "+50588889999"
+            // El nÃºmero de Firebase viene como "+50588889999"
             // Lo limpiamos para dejarlo en formato local
             return user.phoneNumber.replace('+505', '');
         } else {
-            return null; // No hay usuario o no tiene número
+            return null; // No hay usuario o no tiene nÃºmero
         }
     } catch (error) {
-        console.error("Error obteniendo el teléfono del usuario:", error);
+        console.error("Error obteniendo el telÃ©fono del usuario:", error);
         return null;
     }
 }
