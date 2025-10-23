@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -17,17 +17,24 @@
     .timeline-item:last-child { border-left: 2px solid transparent; }
     .timeline-icon {
       position: absolute; left: -11px; top: 5px; width: 20px; height: 20px;
-      border-radius: 50%; background: var(--border-color); 
+      border-radius: 50%; background: var(--border-color);
     }
-    .timeline-item.active .timeline-icon { 
+    .timeline-item.active .timeline-icon {
       background: var(--primary);
       box-shadow: 0 0 0 4px var(--card-bg), 0 0 0 7px var(--primary);
     }
     .timeline-content h3 { font-size: 1.1rem; font-weight: 600; margin:0; }
     .timeline-content p { color: var(--muted); font-size: 0.9rem; margin:0; }
-    .status-rechazado { 
+    .status-rechazado { /* Reutilizamos este estilo para cancelado también */
         background-color: #fff0f1; border: 1px solid #dc3545; color: #dc3545;
         padding: 1.5rem; border-radius: var(--radius); text-align: center;
+    }
+    /* Estilo específico para el icono de cancelación */
+    .status-rechazado h2 svg {
+        width: 1.5em; /* Tamaño del icono */
+        height: 1.5em;
+        vertical-align: middle;
+        margin-right: 0.5rem;
     }
   </style>
 </head>
@@ -55,7 +62,6 @@
     const orderId = new URLSearchParams(window.location.search).get('id');
     document.getElementById('orderId').textContent = orderId || 'No especificado';
 
-    // --- ¡LÍNEA DE TIEMPO ACTUALIZADA! ---
     const estados = [
         { key: 'Pendiente', title: 'Pedido Recibido', desc: 'Hemos recibido tu pedido y está esperando la confirmación del negocio.' },
         { key: 'Aceptado', title: 'Pedido Aceptado y en Preparación', desc: '¡Buenas noticias! El negocio ya está preparando tu pedido.' },
@@ -74,38 +80,70 @@
           body: JSON.stringify({ action: 'getOrderStatus', orderId: orderId })
         });
         const result = await response.json();
-        
+
         if (result.status === 'success' && result.order) {
           renderStatus(result.order.Estado);
         } else {
-          document.getElementById('status-container').innerHTML = `<p>No pudimos encontrar los detalles de la orden #${orderId}.</o>`;
+          // Si el pedido no se encuentra (puede haber sido borrado o ID incorrecto), mostrar mensaje
+          renderStatus(null); // Llamar a renderStatus con null para manejar el no encontrado
+          console.warn(`Pedido ${orderId} no encontrado.`);
         }
       } catch (error) {
         console.error("Error fetching status:", error);
+        // Mostrar un error genérico si falla la conexión
+        document.getElementById('status-container').innerHTML = '<p>Error al cargar el estado del pedido. Revisa tu conexión.</p>';
       }
     }
 
-    // --- ¡FUNCIÓN DE RENDERIZADO ACTUALIZADA! ---
+    // --- ¡FUNCIÓN DE RENDERIZADO ACTUALIZADA CON CANCELACIÓN! ---
     function renderStatus(currentStatus) {
       const container = document.getElementById('status-container');
-      
-      if (currentStatus === 'Rechazado') {
-          container.innerHTML = '<div class="status-rechazado"><h2>Pedido Rechazado</h2><p>Lamentablemente, el negocio no pudo aceptar tu pedido en este momento.</p></div>';
+
+      // Caso: Pedido no encontrado
+      if (currentStatus === null) {
+          container.innerHTML = `<p>No pudimos encontrar los detalles de la orden #${orderId}. Verifica el número o contacta a soporte.</p>`;
           return;
       }
 
-      // Mapeo inteligente de estados internos a los pasos visuales
-      let activeIndex = -1;
-      if (currentStatus === 'Pendiente') {
-        activeIndex = 0;
-      } else if (currentStatus === 'Aceptado' || currentStatus === 'En preparación') { // Mantenemos compatibilidad
-        activeIndex = 1;
-      } else if (currentStatus === 'Listo para Retirar' || currentStatus === 'En Proceso') { // 'En Proceso' es el estado cuando el repartidor lo toma
-        activeIndex = 2;
-      } else if (currentStatus === 'Entregado') {
-        activeIndex = 3;
+      // --- ¡NUEVO BLOQUE PARA CANCELADO POR RESTAURANTE! ---
+      if (currentStatus === 'Cancelado (Restaurante)') {
+          container.innerHTML = `
+            <div class="status-rechazado">
+              <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.5em; height: 1.5em; vertical-align: middle; margin-right: 0.5rem;">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+                Pedido Cancelado
+              </h2>
+              <p>Lo sentimos, el restaurante no confirmó tu pedido a tiempo y fue cancelado automáticamente.</p>
+              <a href="index.html" class="btn" style="margin-top: 1rem; background-color: var(--muted); color: white;">Buscar otras opciones</a>
+            </div>`;
+          return; // Detener la función aquí
       }
-      
+      // --- FIN DEL NUEVO BLOQUE ---
+
+      // El manejo de 'Rechazado' (por el negocio activamente) sigue igual
+      if (currentStatus === 'Rechazado') {
+          container.innerHTML = `
+            <div class="status-rechazado">
+              <h2>
+                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.5em; height: 1.5em; vertical-align: middle; margin-right: 0.5rem;">
+                   <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                 </svg>
+                 Pedido Rechazado
+               </h2>
+               <p>Lamentablemente, el negocio no pudo aceptar tu pedido en este momento.</p>
+            </div>`;
+          return;
+      }
+
+      // Renderizar la línea de tiempo para otros estados
+      let activeIndex = -1;
+      if (currentStatus === 'Pendiente') activeIndex = 0;
+      else if (currentStatus === 'Aceptado' || currentStatus === 'En preparación') activeIndex = 1;
+      else if (currentStatus === 'Listo para Retirar' || currentStatus === 'En Proceso') activeIndex = 2;
+      else if (currentStatus === 'Entregado') activeIndex = 3;
+
       let html = '<ul class="timeline">';
       estados.forEach((estado, index) => {
         const isActive = index <= activeIndex;
@@ -123,10 +161,11 @@
       container.innerHTML = html;
     }
 
-    setInterval(fetchOrderStatus, 15000);
-    fetchOrderStatus();
+    // --- FIN FUNCIÓN RENDERSTATUS ---
+
+    // Iniciar y repetir la verificación de estado
+    setInterval(fetchOrderStatus, 15000); // Sigue actualizando cada 15 segundos
+    fetchOrderStatus(); // Cargar estado inicial
   </script>
 </body>
-
 </html>
-
