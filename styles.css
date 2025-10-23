@@ -369,3 +369,70 @@ body.logged-in .header-actions a[href="login.html"] {
 }
 */
 /* --- FIN ESTILOS ICONO --- */
+
+/* ============================ */
+/* BARRA DE NAVEGACIÓN INFERIOR */
+/* ============================ */
+
+.navbar-bottom {
+  display: flex; /* Usar flexbox para distribuir los ítems */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: var(--card-bg); /* Fondo blanco */
+  border-top: 1px solid var(--border-color); /* Borde superior sutil */
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08); /* Sombra superior */
+  z-index: 1000; /* Asegurar que esté por encima del contenido */
+  padding-bottom: env(safe-area-inset-bottom); /* Espacio seguro en iPhones modernos */
+  /* Ocultar en pantallas grandes (más de 680px) */
+  display: none; 
+}
+
+/* Mostrar la barra solo en pantallas pequeñas */
+@media (max-width: 680px) {
+  .navbar-bottom {
+    display: flex; 
+  }
+  /* Añadir padding inferior al body solo en móviles para que el contenido no quede oculto */
+  body {
+     /* Ajusta este valor según la altura final de tu barra */
+     padding-bottom: 70px; 
+  }
+}
+
+
+.navbar-bottom .nav-link {
+  display: flex;
+  flex-direction: column; /* Icono arriba, texto abajo */
+  align-items: center; /* Centrar horizontalmente */
+  justify-content: center; /* Centrar verticalmente */
+  flex: 1; /* Cada ítem ocupa el mismo espacio */
+  padding: 0.5rem 0.25rem; /* Espaciado interno */
+  text-decoration: none;
+  color: var(--muted); /* Color gris por defecto */
+  transition: color 0.2s ease;
+  font-size: 0.75rem; /* Tamaño del texto */
+  font-weight: 500; /* Un poco más grueso que normal */
+  text-align: center;
+  min-height: 60px; /* Altura mínima para asegurar espacio */
+}
+
+.navbar-bottom .nav-link svg {
+  width: 26px; /* Tamaño de los iconos */
+  height: 26px;
+  margin-bottom: 4px; /* Espacio entre icono y texto */
+}
+
+/* Estilo para el enlace activo */
+.navbar-bottom .nav-link.active,
+.navbar-bottom .nav-link:hover { /* Hover sutil en escritorio si se ve */
+  color: var(--primary); /* Color rojo primario */
+}
+
+/* Ocultar la barra antigua en móviles (si aún existe) */
+@media (max-width: 680px) {
+    .bottom-nav { /* La clase que usabas antes */
+         display: none !important; /* Ocultar la vieja barra */
+    }
+}
