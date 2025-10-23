@@ -75,6 +75,14 @@
         document.getElementById('list').innerHTML = '<p>Error al cargar los negocios. Por favor, intenta de nuevo.</p>';
       }
     })();
+          // EN categoria.html (Al final del script principal)
+      const currentCategory = decodeURIComponent(qParam('cat') || '');
+      if (currentCategory === 'Mercado') {
+          setActiveNavbarLink('mercado');
+      } else {
+          // Opcional: podrías marcar 'index' o ningún icono si no es Mercado
+          // setActiveNavbarLink('index'); 
+      }
   </script>
   <nav class="navbar-bottom">
   <a href="index.html" class="nav-link" data-page="index">
@@ -108,5 +116,6 @@
 </nav>
 </body>
 </html>
+
 
 
