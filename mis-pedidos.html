@@ -120,7 +120,7 @@
   </main>
 
   <footer class="site-footer">© PediloYa</footer>
-  <script src="lib.js"></script>
+  <script src="lib.js"></script> 
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXyXzIAelblfS89-_uD29B4M1ksXzeUajIueaAid-11l6AO68GSNmoU7x3QHTu4xr2/exec";
     
@@ -194,27 +194,132 @@
 
     // --- LÓGICA DE LOGIN CON MANEJO DE BLOQUEO (sin cambios) ---
     sendOtpBtn.addEventListener('click', async () => {
-        // ... (código igual) ...
+        if (blockTimerInterval) {
+            sendOtpError.innerHTML = `⏳ Aún debes esperar <strong>${blockSecondsRemaining}</strong> segundos.`;
+            sendOtpError.style.display = 'block';
+            return;
+        }
+        const phoneNumber = celularInput.value.trim();
+        if (phoneNumber.length < 8) {
+            sendOtpError.textContent = 'Por favor, introduce un número de 8 dígitos.';
+            return sendOtpError.style.display = 'block';
+        }
+        const fullPhoneNumber = `+505${phoneNumber}`;
+        sendOtpBtn.disabled = true;
+        sendOtpBtn.textContent = 'Enviando SMS...';
+        sendOtpError.style.display = 'none';
+        if (!appVerifier) {
+            sendOtpError.textContent = 'Error: El verificador reCAPTCHA no está listo. Recarga la página.';
+            sendOtpError.style.display = 'block';
+            console.error("Intento de enviar SMS pero appVerifier es null.");
+            return;
+        }
+        try {
+            console.log("Llamando a signInWithPhoneNumber con reCAPTCHA visible...");
+            confirmationResult = await auth.signInWithPhoneNumber(fullPhoneNumber, appVerifier);
+            console.log("Llamada exitosa, esperando código OTP.");
+            celularInput.disabled = true;
+            recaptchaContainer.style.display = 'none';
+            sendOtpBtn.style.display = 'none';
+            otpContainer.style.display = 'block';
+            document.getElementById('otp-code').focus();
+        } catch (error) {
+            console.error("Error en signInWithPhoneNumber:", error);
+            if (error.code === 'auth/too-many-requests') {
+                blockSecondsRemaining = 60;
+                sendOtpError.innerHTML = `⏳ ¡Ups! Demasiados intentos. Por seguridad, espera un momento.<br>Podrás intentarlo de nuevo en <strong>${blockSecondsRemaining}</strong> segundos.`;
+                sendOtpError.style.display = 'block';
+                sendOtpBtn.textContent = 'Espera...';
+                sendOtpBtn.disabled = true;
+                blockTimerInterval = setInterval(() => {
+                    blockSecondsRemaining--;
+                    const strongTag = sendOtpError.querySelector('strong');
+                    if (strongTag) strongTag.textContent = blockSecondsRemaining;
+                    if (blockSecondsRemaining <= 0) {
+                        clearInterval(blockTimerInterval);
+                        blockTimerInterval = null;
+                        sendOtpBtn.disabled = false;
+                        sendOtpBtn.textContent = 'Enviar código SMS';
+                        sendOtpError.style.display = 'none';
+                        console.log("Temporizador de bloqueo finalizado.");
+                        try {
+                           if (appVerifier && typeof appVerifier.render === 'function') {
+                              appVerifier.render().catch(e => console.error("Error re-renderizando reCAPTCHA post-bloqueo:", e));
+                              recaptchaContainer.style.display = 'block';
+                           }
+                        } catch(e){ console.error("Error intentando resetear reCAPTCHA post-bloqueo:", e);}
+                    }
+                }, 1000);
+            } else {
+                sendOtpError.textContent = `Error al enviar SMS: ${error.message}. Intenta de nuevo.`;
+                sendOtpError.style.display = 'block';
+                sendOtpBtn.disabled = true;
+                sendOtpBtn.textContent = 'Verificar y Enviar SMS';
+                 try {
+                     if (appVerifier && typeof appVerifier.render === 'function') {
+                        appVerifier.render().catch(e => console.error("Error re-renderizando reCAPTCHA post-error:", e));
+                     }
+                 } catch(e){ console.error("Error intentando resetear reCAPTCHA post-error:", e);}
+            }
+        }
     });
 
     // --- Lógica de Confirmar Código OTP (sin cambios) ---
     confirmOtpBtn.addEventListener('click', async () => {
-        // ... (código igual) ...
+        const code = document.getElementById('otp-code').value.trim();
+        if (code.length < 6) {
+            confirmOtpError.textContent = 'El código debe tener 6 dígitos.';
+            return confirmOtpError.style.display = 'block';
+        }
+        confirmOtpBtn.disabled = true;
+        confirmOtpBtn.textContent = 'Verificando...';
+        confirmOtpError.style.display = 'none';
+        try {
+            await confirmationResult.confirm(code);
+            window.location.reload();
+        } catch (error) {
+            console.error("Error en confirmationResult.confirm():", error);
+            confirmOtpError.textContent = 'Código incorrecto o expirado. Intenta de nuevo.';
+            confirmOtpError.style.display = 'block';
+            confirmOtpBtn.disabled = false;
+            confirmOtpBtn.textContent = 'Verificar e Iniciar Sesión';
+        }
     });
 
     // --- LÓGICA DE CERRAR SESIÓN (sin cambios) ---
     document.getElementById('logout-btn').addEventListener('click', async () => {
-       // ... (código igual) ...
+        try {
+            await logOut();
+            window.location.reload();
+        } catch (error) {
+            console.error("Error al cerrar sesión:", error);
+            alert("Hubo un problema al cerrar sesión.");
+        }
     });
 
     // --- LÓGICA DE CARGAR PEDIDOS (sin cambios) ---
     async function loadOrders(phone) {
-       // ... (código igual) ...
+        if (!phone) return;
+        ordersList.innerHTML = '<p>Buscando tus pedidos...</p>';
+        try {
+            const response = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'getOrdersByPhone', phone: phone })
+            });
+            const result = await response.json();
+            if (result.status === 'success' && result.orders.length > 0) {
+                renderOrders(result.orders);
+            } else {
+                ordersList.innerHTML = '<p>No encontramos pedidos asociados a tu número.</p>';
+            }
+        } catch (error) {
+            console.error("Error cargando pedidos:", error);
+            ordersList.innerHTML = '<p>Ocurrió un error al buscar tus pedidos.</p>';
+        }
     }
 
     // --- FUNCIÓN RENDERORDERS CON BOTÓN CALIFICAR (sin cambios) ---
     function renderOrders(orders) {
-      // ... (código igual, incluyendo la lógica del rateButtonHtml) ...
         let html = ''; 
         orders.forEach(order => {
             const statusClass = `status-${(order.Estado || '').toLowerCase().replace(/\s+/g, '-')}`;
@@ -253,6 +358,7 @@
 
     // --- ¡NUEVA FUNCIÓN! PARA MANEJAR SUSCRIPCIONES PUSH ---
     async function initPushNotifications(phone) {
+        // Verificar compatibilidad del navegador
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
             console.warn('Push Notifications no soportadas en este navegador.');
             return;
@@ -260,17 +366,16 @@
 
         try {
             // 1. Registrar el Service Worker
-            // ¡Asegúrate que 'firebase-messaging-sw.js' esté en la RAÍZ de tu sitio en GitHub Pages!
-            const swRegistration = await navigator.serviceWorker.register('/pediloya/firebase-messaging-sw.js'); // Ajusta la ruta si es necesario
-            console.log('Service Worker registrado:', swRegistration);
+            // ¡IMPORTANTE! Ajusta esta ruta si 'firebase-messaging-sw.js' no está en la raíz de 'pediloya'
+            const swRegistration = await navigator.serviceWorker.register('/pediloya/firebase-messaging-sw.js'); 
+            console.log('Service Worker registrado:', swRegistration.scope); // Loguear el scope
 
             // 2. Solicitar Permiso (si aún no se ha concedido)
             console.log('Solicitando permiso de notificación...');
             const permission = await Notification.requestPermission();
             if (permission !== 'granted') {
                 console.log('Permiso de notificación denegado.');
-                // Aquí podrías mostrar un mensaje discreto al usuario si quieres
-                // alert('Para recibir notificaciones sobre tus pedidos, por favor habilita los permisos en tu navegador.');
+                // Considera mostrar un mensaje no intrusivo si quieres informar al usuario
                 return;
             }
             console.log('Permiso de notificación concedido.');
@@ -282,9 +387,11 @@
             const vapidPublicKey = 'BPyS_urU3cie0xM-kTZ2-ore92wL0cOHuySzaEsKBNi3f4t8HPnlPQZO71Gyi1DhnGKnhVRFvdmn9WkmzZ4kT_I'; 
             
             console.log('Obteniendo token FCM con VAPID Key...');
+            // Esperar a que el SW esté activo antes de pedir el token
+            await navigator.serviceWorker.ready; // Asegura que el SW está listo
             const currentToken = await messaging.getToken({ 
                 vapidKey: vapidPublicKey, 
-                serviceWorkerRegistration: swRegistration // Asociar con nuestro SW registrado
+                serviceWorkerRegistration: swRegistration 
             }); 
 
             if (currentToken) {
@@ -294,32 +401,20 @@
                 console.log('Obteniendo suscripción Push...');
                 const subscription = await swRegistration.pushManager.getSubscription();
                 if (subscription) {
-                    // console.log('Suscripción Push:', subscription); // Log detallado opcional
                     console.log('Endpoint:', subscription.endpoint); 
                     
                     // 5. Guardar la Suscripción en Firebase Realtime DB
-                    // Crear un ID único basado en el endpoint para evitar duplicados
-                    // btoa puede tener caracteres no válidos para claves de Firebase ('+' o '/'), los reemplazamos
                     const subscriptionId = btoa(subscription.endpoint).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, ''); 
-                    
-                    // Apuntar a la ubicación: pushSubscriptions / numeroLocal / idDeSuscripcion
-                    const subscriptionRef = db.ref(`pushSubscriptions/${phone}/${subscriptionId}`);
-                    
-                    // Extraer las claves necesarias para enviar el push
+                    const subscriptionRef = db.ref(`pushSubscriptions/${phone}/${subscriptionId}`); // 'db' viene de auth.js
                     const keys = subscription.toJSON().keys;
                     if (!keys || !keys.p256dh || !keys.auth) {
                         console.error("La suscripción obtenida no contiene las claves p256dh y auth.");
                         return;
                     }
-
                     const subscriptionData = {
                         endpoint: subscription.endpoint,
-                        keys: {
-                            p256dh: keys.p256dh,
-                            auth: keys.auth
-                        }
+                        keys: { p256dh: keys.p256dh, auth: keys.auth }
                     };
-
                     console.log('Guardando suscripción en Firebase DB:', subscriptionData);
                     await subscriptionRef.set(subscriptionData);
                     console.log('Suscripción guardada exitosamente en Firebase DB para:', phone);
@@ -328,18 +423,23 @@
                      console.warn('No se pudo obtener la suscripción Push Manager después de obtener el token FCM.');
                 }
             } else {
-                console.warn('No se pudo obtener el token FCM. Revisa la configuración de `firebase-messaging-sw.js` y las claves VAPID.');
+                console.warn('No se pudo obtener el token FCM. Revisa la configuración de `firebase-messaging-sw.js`, las claves VAPID y los permisos.');
             }
 
         } catch (error) {
             console.error('Error detallado al inicializar notificaciones push:', error);
-            // Mostrar un mensaje más específico si es posible
-            if (error.code === 'messaging/permission-blocked') {
-                alert('Las notificaciones están bloqueadas. Habilítalas en la configuración de tu navegador si deseas recibirlas.');
-            } else if (error.code === 'messaging/failed-serviceworker-registration') {
-                 alert('Error al registrar el componente de notificaciones (Service Worker). Asegúrate de estar usando HTTPS.');
+            if (error.code === 'messaging/permission-blocked' || error.name === 'NotAllowedError') { // Incluir NotAllowedError
+                // No mostrar alert si el usuario bloqueó, es intrusivo. Loguear es suficiente.
+                console.warn('Las notificaciones están bloqueadas por el usuario.'); 
+            } else if (error.code === 'messaging/failed-serviceworker-registration' || error.message.includes('service worker')) {
+                 console.error('Error al registrar el Service Worker. Verifica la ruta y que estés en HTTPS.');
+                 // alert('Error al registrar el componente de notificaciones (Service Worker). Asegúrate de estar usando HTTPS y que la ruta al archivo SW sea correcta.');
+            } else if (error.code === 'messaging/token-subscribe-failed'){
+                 console.error(`Error al suscribir a notificaciones: ${error.message}. Verifica la configuración VAPID/FCM API.`);
+                 // alert(`Error al suscribir a notificaciones: ${error.message}. Verifica la configuración.`);
             } else {
-                 alert(`Ocurrió un error al configurar las notificaciones: ${error.message}`);
+                 console.error(`Ocurrió un error al configurar las notificaciones: ${error.message}`);
+                 // alert(`Ocurrió un error al configurar las notificaciones: ${error.message}`);
             }
         }
     }
@@ -348,3 +448,4 @@
   </script>
 </body>
 </html>
+
