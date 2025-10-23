@@ -64,3 +64,48 @@ async function getUserPhone() {
     }
 }
 
+// EN auth.js (Añadir al final)
+
+/**
+ * Actualiza el header basado en el estado de login.
+ * Muestra/oculta el icono de perfil/logout.
+ * Añade/quita la clase 'logged-in' al body.
+ */
+function updateHeaderAuthState() {
+    auth.onAuthStateChanged(user => {
+        const profileButton = document.getElementById('profile-logout-button'); // Busca el botón del icono
+
+        if (user) {
+            // Usuario está logueado
+            document.body.classList.add('logged-in'); // Añadir clase al body
+            if (profileButton) {
+                profileButton.style.display = 'block'; // Asegurar que sea visible (aunque CSS lo hace)
+                // Añadir el listener para cerrar sesión SOLO si no existe ya
+                if (!profileButton.dataset.listenerAttached) {
+                     profileButton.addEventListener('click', async () => {
+                        try {
+                            console.log("Cerrando sesión...");
+                            await logOut();
+                            console.log("Sesión cerrada, recargando...");
+                            window.location.reload(); // Recargar la página actual
+                        } catch (error) {
+                            console.error("Error al cerrar sesión desde header:", error);
+                            alert("Hubo un problema al cerrar sesión.");
+                        }
+                    });
+                    profileButton.dataset.listenerAttached = 'true'; // Marcar que ya tiene listener
+                }
+            }
+        } else {
+            // Usuario NO está logueado
+            document.body.classList.remove('logged-in'); // Quitar clase del body
+            if (profileButton) {
+                profileButton.style.display = 'none'; // Ocultar botón (CSS lo debería hacer)
+            }
+        }
+    });
+}
+
+// Llamar a la función una vez al cargar auth.js para configurar el estado inicial
+updateHeaderAuthState();
+
