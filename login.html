@@ -6,6 +6,7 @@
   <title>Acceso para Negocios - PediloYa</title>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <link rel="manifest" href="manifest.json">
 
   <script src="auth.js"></script>
   <link rel="stylesheet" href="styles.css">
@@ -60,12 +61,12 @@
         const negocioEncontrado = negocios.find(negocio => negocio.Clave === clave);
         
         if (negocioEncontrado) {
-          // 3. ¡Éxito! Redirigimos al panel de admin con el ID correcto
-          loginButton.textContent = '¡Acceso concedido!';
+          // 3. Â¡Ã‰xito! Redirigimos al panel de admin con el ID correcto
+          loginButton.textContent = 'Â¡Acceso concedido!';
           window.location.href = `admin.html?id=${negocioEncontrado.ID}`;
         } else {
-          // 4. Error: La clave no coincide con ningún negocio
-          errorMessage.textContent = 'Clave incorrecta. Por favor, inténtalo de nuevo.';
+          // 4. Error: La clave no coincide con ningÃºn negocio
+          errorMessage.textContent = 'Clave incorrecta. Por favor, intÃ©ntalo de nuevo.';
           errorMessage.style.display = 'block';
           loginButton.disabled = false;
           loginButton.textContent = 'Entrar al Panel';
@@ -73,7 +74,7 @@
 
       } catch (error) {
         console.error('Error durante el login:', error);
-        errorMessage.textContent = 'No se pudo conectar. Revisa tu conexión a internet.';
+        errorMessage.textContent = 'No se pudo conectar. Revisa tu conexiÃ³n a internet.';
         errorMessage.style.display = 'block';
         loginButton.disabled = false;
         loginButton.textContent = 'Entrar al Panel';
@@ -81,4 +82,5 @@
     });
   </script>
 </body>
+
 </html>
