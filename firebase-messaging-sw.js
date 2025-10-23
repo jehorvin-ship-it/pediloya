@@ -6,7 +6,7 @@ try {
     importScripts('https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js');
     importScripts('https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js');
 
-    // ¬°Usa TU configuraci√≥n de Firebase aqu√≠! (Solo necesitas las primeras claves)
+    // °Usa TU configuraciÛn de Firebase aquÌ! (Solo necesitas las primeras claves)
     const firebaseConfig = {
       apiKey: "AIzaSyBcsps_cdROmgwHRNkHNUbSqO2E26u36Ms",
       authDomain: "pediloya-d210a.firebaseapp.com",
@@ -14,7 +14,7 @@ try {
       storageBucket: "pediloya-d210a.firebasestorage.app", // Necesario para messaging
       messagingSenderId: "165315675643",
       appId: "1:165315675643:web:04eed7c14c533e87f5b75e",
-      // databaseURL: "https://pediloya-d210a-default-rtdb.firebaseio.com" // A√±ade si tienes problemas
+      // databaseURL: "https://pediloya-d210a-default-rtdb.firebaseio.com" // AÒade si tienes problemas
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -26,12 +26,12 @@ try {
     messaging.onBackgroundMessage((payload) => {
       console.log('[firebase-messaging-sw.js] Received background message ', payload);
 
-      // Personalizar la notificaci√≥n
+      // Personalizar la notificaciÛn
       const notificationTitle = payload.notification.title || 'PediloYa';
       const notificationOptions = {
-        body: payload.notification.body || 'Tienes una nueva notificaci√≥n.',
+        body: payload.notification.body || 'Tienes una nueva notificaciÛn.',
         icon: payload.notification.icon || '/logo.png' // Puedes usar tu logo
-        // Puedes a√±adir m√°s opciones: badge, image, actions, etc.
+        // Puedes aÒadir m·s opciones: badge, image, actions, etc.
         // data: payload.data // Para pasar datos adicionales y actuar al hacer clic
       };
 
