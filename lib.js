@@ -107,3 +107,29 @@ function csvToJson(csvText) {
 // Puedes añadir más funciones útiles aquí si las necesitas en varias páginas
 // Por ejemplo, formateo de fechas, validaciones, etc.
 
+// EN lib.js (Añadir al final del archivo)
+
+/**
+ * Marca el enlace activo en la barra de navegación inferior.
+ * @param {string} currentPage - El valor 'data-page' de la página actual.
+ */
+function setActiveNavbarLink(currentPage) {
+    // Esperar a que el DOM esté completamente cargado antes de manipular la barra
+    document.addEventListener('DOMContentLoaded', () => {
+        const navLinks = document.querySelectorAll('.navbar-bottom .nav-link');
+        if (navLinks.length === 0) {
+            // Si la barra aún no existe en el DOM, intentar de nuevo un poco después
+            // Esto puede pasar si el script lib.js se carga muy rápido en el head
+            setTimeout(() => setActiveNavbarLink(currentPage), 100);
+            return;
+        }
+        
+        navLinks.forEach(link => {
+            link.classList.remove('active'); // Quitar 'active' de todos
+            // Usamos dataset.page para leer el atributo data-page="xxx"
+            if (link.dataset.page === currentPage) {
+                link.classList.add('active'); // Añadir 'active' al enlace correcto
+            }
+        });
+    });
+}
