@@ -332,43 +332,7 @@ form { margin: 1.5rem 0; }
 
 /* EN styles.css */
 
-/* --- ESTILOS PARA ICONO DE PERFIL/LOGOUT --- */
-.profile-action {
-  display: none; /* Oculto por defecto */
-  margin-left: auto; /* Empujar a la derecha */
-  cursor: pointer;
-  background: none;
-  border: none;
-  padding: 0.5rem; /* Área de toque */
-  border-radius: 50%;
-  transition: background-color 0.2s ease;
-}
 
-.profile-action:hover {
-    background-color: #f0f0f0; /* Un sutil hover */
-}
-
-.profile-action svg {
-  width: 24px;
-  height: 24px;
-  stroke: var(--muted); /* Color del icono */
-  stroke-width: 1.5;
-}
-
-/* Clase para mostrar el icono cuando el usuario está logueado */
-body.logged-in .profile-action {
-    display: block; /* Mostrar el icono */
-}
-
-/* Opcional: Ocultar enlaces de "Mis Pedidos" / "Negocios" en el header cuando está logueado */
-/* Descomenta estas líneas si quieres ocultar esos enlaces */
-/*
-body.logged-in .header-actions a[href="mis-pedidos.html"],
-body.logged-in .header-actions a[href="login.html"] {
-    display: none;
-}
-*/
-/* --- FIN ESTILOS ICONO --- */
 
 /* ============================ */
 /* BARRA DE NAVEGACIÓN INFERIOR */
@@ -436,3 +400,4 @@ body.logged-in .header-actions a[href="login.html"] {
          display: none !important; /* Ocultar la vieja barra */
     }
 }
+
