@@ -9,7 +9,8 @@ const firebaseConfig = {
   projectId: "pediloya-d210a",
   storageBucket: "pediloya-d210a.firebasestorage.app",
   messagingSenderId: "165315675643",
-  appId: "1:165315675643:web:04eed7c14c533e87f5b75e"
+  appId: "1:165315675643:web:04eed7c14c533e87f5b75e",
+  databaseURL: "https://pediloya-d210a-default-rtdb.firebaseio.com"
 };
 // ----------------------------------------------
 
@@ -62,3 +63,4 @@ async function getUserPhone() {
         return null;
     }
 }
+
