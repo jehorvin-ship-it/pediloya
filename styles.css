@@ -390,8 +390,7 @@ form { margin: 1.5rem 0; }
 
 /* Estilo para el enlace activo */
 .navbar-bottom .nav-link.active,
-.navbar-bottom .nav-link:hover { /* Hover sutil en escritorio si se ve */
-  color: var(--primary); /* Color rojo primario */
+.navbar-bottom .nav-link:hover { color: #FFAA4D; /* <-- ¡CAMBIO AQUÍ! Nuevo color anaranjado */
 }
 
 /* Ocultar la barra antigua en móviles (si aún existe) */
@@ -400,4 +399,5 @@ form { margin: 1.5rem 0; }
          display: none !important; /* Ocultar la vieja barra */
     }
 }
+
 
