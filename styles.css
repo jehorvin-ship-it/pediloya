@@ -388,9 +388,9 @@ form { margin: 1.5rem 0; }
   margin-bottom: 4px; /* Espacio entre icono y texto */
 }
 
-/* Estilo para el enlace activo */ --primary: ;      /* Rojo PedidosYa - Puntual y energético */
+/* Estilo para el enlace activo */ 
 .navbar-bottom .nav-link.active,
-.navbar-bottom .nav-link:hover { color: #EF3340; /* /* Rojo PedidosYa - Puntual y energético */
+.navbar-bottom .nav-link:hover { color: #EF3340;
 }
 
 /* Ocultar la barra antigua en móviles (si aún existe) */
@@ -399,6 +399,7 @@ form { margin: 1.5rem 0; }
          display: none !important; /* Ocultar la vieja barra */
     }
 }
+
 
 
 
