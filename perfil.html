@@ -7,10 +7,10 @@
 
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script> 
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
   <script src="auth.js"></script>
 
-  <link rel="stylesheet" href="styles.css"> 
+  <link rel="stylesheet" href="styles.css">
   <style>
     /* Estilos específicos para la página de perfil */
     .profile-header {
@@ -28,7 +28,7 @@
     .profile-header p {
       color: var(--muted);
       font-weight: 500;
-    }
+     }
     .profile-options {
       list-style: none;
       padding: 0;
@@ -94,37 +94,37 @@
   <main class="container" style="max-width: 600px;">
 
     <div class="profile-header">
-      <div class="icon">👤</div> 
+      <div class="icon">👤</div>
       <p id="user-phone-display">Cargando número...</p>
     </div>
 
     <ul class="profile-options">
-       <li>
+      <li>
         <a href="mis-pedidos.html">
-          <svg></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
           Mis Pedidos
         </a>
       </li>
       <li>
-        <a href="#direcciones" class="disabled-link"> <svg></svg>
+        <a href="#direcciones" class="disabled-link"> <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
            Mis Direcciones (Próximamente)
         </a>
       </li>
        <li>
         <a href="#cupones" class="disabled-link">
-           <svg></svg>
+           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-1.5h5.25m-5.25 0h3m-3 0h-3m2.25-4.125c0-1.02.83-1.875 1.875-1.875h.375c1.02 0 1.875.83 1.875 1.875v.375c0 1.02-.83 1.875-1.875 1.875h-.375C8.33 13.5 7.5 12.67 7.5 11.625v-.375zm0 0V6.75A2.25 2.25 0 019.75 4.5h4.5A2.25 2.25 0 0116.5 6.75v6.75a2.25 2.25 0 01-2.25 2.25H9.75A2.25 2.25 0 017.5 13.5v-1.5z" /></svg>
            Mis Cupones (Próximamente)
         </a>
       </li>
        <li>
         <a href="#ayuda" class="disabled-link">
-           <svg></svg>
+           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" /></svg>
            Ayuda en Línea (Próximamente)
         </a>
       </li>
       <li>
         <button id="logout-button" class="logout-button">
-          <svg></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg>
           Cerrar Sesión
         </button>
       </li>
@@ -136,23 +136,23 @@
 
   <nav class="navbar-bottom">
      <a href="index.html" class="nav-link" data-page="index">
-       <svg></svg>
+       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg>
        <span>Inicio</span>
      </a>
      <a href="categoria.html?cat=Mercado" class="nav-link" data-page="mercado"> 
-       <svg></svg>
+       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
        <span>Mercado</span>
      </a>
      <a href="promociones.html" class="nav-link" data-page="promociones"> 
-        <svg></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" /><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" /></svg>
         <span>Promos</span>
      </a>
      <a href="mis-pedidos.html" class="nav-link" data-page="pedidos">
-       <svg></svg>
+       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
        <span>Pedidos</span>
      </a>
      <a href="perfil.html" class="nav-link" data-page="perfil"> 
-        <svg></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
         <span>Mi Perfil</span>
      </a>
   </nav>
@@ -174,7 +174,7 @@
         const userPhone = user.phoneNumber.replace('+505', '');
         userPhoneDisplay.textContent = `+505 ${userPhone}`;
 
-        logoutButton.addEventListener('click', async () => {
+        logoutButton.addEventListener('click', async () => { 
             logoutButton.disabled = true;
             logoutButton.textContent = 'Cerrando sesión...';
             try {
@@ -189,24 +189,17 @@
             }
         });
 
-         document.querySelectorAll('.disabled-link').forEach(link => {
+         document.querySelectorAll('.disabled-link').forEach(link => { 
              link.style.opacity = '0.5';
              link.style.cursor = 'not-allowed';
              link.addEventListener('click', (e) => e.preventDefault()); 
          });
          
-         // ¡Llamada a setActiveNavbarLink eliminada de aquí! Se llama abajo.
-
     })(); // Fin del bloque async auto-ejecutable
 
     // --- ¡LLAMADA ÚNICA Y CORRECTA A setActiveNavbarLink! ---
-    // Se ejecuta después de que lib.js ha cargado y definido la función.
-    // La función en lib.js se encarga de esperar a DOMContentLoaded.
     setActiveNavbarLink('perfil'); 
     // --- FIN LLAMADA ---
-
-    // --- DEFINICIÓN DE setActiveNavbarLink ELIMINADA DE AQUÍ ---
-    // (Asegúrate de que esté definida UNA SOLA VEZ en lib.js)
    
   </script>
 </body>
