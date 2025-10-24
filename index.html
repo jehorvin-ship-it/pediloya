@@ -252,7 +252,7 @@
     function renderCategories() {
         const cats = Array.from(new Set(allNegociosActivos.map(n => n.Categoria || 'Sin categoría')));
         const catImages = { /* ... tus imágenes ... */ 
-             'Restaurante': 'https://i.ibb.co/ch86Wmb7/amburguesa-Photoroom.png', 'Mercado': 'https://i.ibb.co/V0P0Sh0M/mercado2-Photoroom.png', 'Hogar y Servicios': 'https://i.ibb.co/G3B0gqM6/Hogar-y-Servicios.jpg', 'Farmacias': 'https://i.ibb.co/bjW7hNfN/Farmacia.png', 'Tiendas': 'https://i.ibb.co/vvqbpMvd/tienda.png', 'Mandados': 'https://i.ibb.co/8L1BT9yL/Mandado.png',
+             'Restaurante': 'https://i.ibb.co/ch86Wmb7/amburguesa-Photoroom.png', 'Mercado': 'https://i.ibb.co/V0P0Sh0M/mercado2-Photoroom.png', 'Hogar y Servicios': 'https://i.ibb.co/G3B0gqM6/Hogar-y-Servicios.jpg', 'Farmacias': 'https://i.ibb.co/bjW7hNfN/Farmacia.png', 'Tiendas': 'https://i.ibb.co/1ckDm5L/tienda.png', 'Mandados': 'https://i.ibb.co/8L1BT9yL/Mandado.png',
         };
         categoriesContainer.innerHTML = ''; // Limpiar por si acaso
         cats.forEach(c => {
@@ -305,6 +305,7 @@
 </nav>
 </body>
 </html>
+
 
 
 
